@@ -1,0 +1,71 @@
+// Catalogue from the "Molten Stories" price list (prices in ₹, per piece).
+// Edits made on /admin are stored in the browser (see ProductsContext).
+// `images` is a list of product photos (files in public/img/products; the first is the main one) — or a single
+// `image`. With no photo, the illustrated candle in `color` is shown. Optional `old` is a struck-through price.
+export const categories = ['All', 'Floral', 'Decorative', 'Everyday', 'Gifting'];
+
+export const products = [
+  // Floral
+  { id: 1, name: 'Peony Paradise', category: 'Floral', price: 380, color: '#e8a5b4', image: '/img/products/peony-paradise.jpg',
+    desc: 'A lush, handmade peony candle that blooms on any table.' },
+  { id: 2, name: 'Pantalones Garden Glow', category: 'Floral', price: 345, color: '#b9d19a', image: '/img/products/garden-glow.jpg',
+    desc: 'A garden-inspired floral candle with a warm, soft glow.' },
+  { id: 3, name: 'Tiny Bloom', category: 'Floral', price: 80, color: '#f0dfb8', image: '/img/products/tiny-bloom.jpg',
+    desc: 'A petite floral candle, perfect for little gifts.' },
+  { id: 4, name: 'Floral Scoop', category: 'Floral', price: 180, color: '#f2b8c6', image: '/img/products/floral-scoop.jpg',
+    desc: 'Sweet floral scoops that look good enough to savour.' },
+  { id: 5, name: 'Ice Bloom', category: 'Floral', price: 340, color: '#bcd6e8', image: '/img/products/ice-bloom.jpg',
+    desc: 'A cool, frosted-look bloom for a calm, elegant space.' },
+  { id: 6, name: 'Bouquet', category: 'Floral', price: 900, color: '#d98aa6', image: '/img/products/bouquet.jpg',
+    desc: 'A full candle bouquet that never wilts.' },
+  { id: 7, name: 'Bouquet Rose', category: 'Floral', price: 350, color: '#c9506a', image: '/img/products/bouquet-rose.jpg',
+    desc: 'A romantic rose bouquet candle.' },
+  { id: 8, name: 'Roselle', category: 'Floral', price: 280, color: '#b03a54', image: '/img/products/roselle.jpg',
+    desc: 'A deep, rich bloom with a soft, elegant feel.' },
+  { id: 9, name: 'Peony', category: 'Floral', price: 220, color: '#e8a5b4', image: '/img/products/peony.jpg',
+    desc: 'A romantic peony candle with delicate petals.' },
+  { id: 10, name: 'Pantalones Tulip', category: 'Floral', price: 90, color: '#d98aa6', image: '/img/products/tulip.jpg',
+    desc: 'A delicate tulip candle for sweet moments.' },
+  { id: 11, name: 'Pantalones Daisy', category: 'Floral', price: 30, color: '#f6ecc8', image: '/img/products/daisy.jpg',
+    desc: 'A cheerful little daisy candle.' },
+  { id: 12, name: 'Bloom Pot', category: 'Floral', price: 350, color: '#a9c28a', image: '/img/products/bloom-pot.jpg',
+    desc: 'Flowers in a pot, made of wax and always in bloom.' },
+  { id: 13, name: 'Rose Heart', category: 'Floral', price: 120, color: '#d4586f', image: '/img/products/rose-heart.jpg',
+    desc: 'A heart-shaped rose candle made for gifting.' },
+
+  // Decorative
+  { id: 14, name: 'Butterfly', category: 'Decorative', price: 300, color: '#b9a3d6', image: '/img/products/butterfly.jpg',
+    desc: 'A light, fluttering butterfly to brighten a corner.' },
+  { id: 15, name: 'Hidden Soul', category: 'Decorative', price: 500, color: '#a67c52', image: '/img/products/hidden-soul.jpg',
+    desc: 'A sculptural candle with a story to uncover.' },
+  { id: 16, name: 'Dreamy Angel', category: 'Decorative', price: 330, color: '#efe3d0', image: '/img/products/dreamy-angel.jpg',
+    desc: 'A soft, serene angel for peaceful evenings.' },
+  { id: 17, name: 'Cuddle Bear', category: 'Decorative', price: 250, color: '#d9b08a', image: '/img/products/cuddle-bear.jpg',
+    desc: 'A cuddly bear candle that is hard not to love.' },
+  { id: 18, name: 'Soul Mate (A)', category: 'Decorative', price: 400, color: '#c98a8a', image: '/img/products/soul-mate-a.jpg',
+    desc: 'A pair-inspired sculpture, set A.' },
+  { id: 19, name: 'Soul Mate (B)', category: 'Decorative', price: 300, color: '#b98aa6', image: '/img/products/soul-mate-b.jpg',
+    desc: 'A pair-inspired sculpture, set B.' },
+  { id: 20, name: 'Pantalones Buddha', category: 'Decorative', price: 700, color: '#c9a95c', image: '/img/products/buddha.jpg',
+    desc: 'A serene Buddha candle for a calm, mindful space.' },
+  { id: 21, name: 'Rose Tower', category: 'Decorative', price: 500, color: '#d4586f', image: '/img/products/rose-tower.jpg',
+    desc: 'A tiered tower of roses that makes a statement.' },
+  { id: 22, name: 'Lantern Light', category: 'Decorative', price: 400, color: '#d9824a', image: '/img/products/lantern-light.jpg',
+    desc: 'A lantern-inspired glow for festive moments.' },
+  { id: 23, name: 'Line Swirl', category: 'Decorative', price: 350, color: '#8fa38a', image: '/img/products/line-swirl.jpg',
+    desc: 'Flowing swirled lines for a modern look.' },
+  { id: 24, name: 'Semi Oval Pillar', category: 'Decorative', price: 390, color: '#a67c52', image: '/img/products/semi-oval-pillar.jpg',
+    desc: 'A clean, sculpted pillar to warm up your space.' },
+  { id: 25, name: 'Eclipse (A)', category: 'Decorative', price: 300, color: '#6b5b73', image: '/img/products/eclipse-a.jpg',
+    desc: 'A moody, sculptural eclipse design, style A.' },
+  { id: 26, name: 'Eclipse (B)', category: 'Decorative', price: 200, color: '#8a7a96', image: '/img/products/eclipse-b.jpg',
+    desc: 'A moody, sculptural eclipse design, style B.' },
+  { id: 27, name: 'Santa', category: 'Decorative', price: 250, color: '#c0392b', image: '/img/products/santa.jpg',
+    desc: 'A festive Santa candle for the holiday season.' },
+
+  // Everyday
+  { id: 28, name: 'Bubble Pillar', category: 'Everyday', price: 150, color: '#bcd6e8', image: '/img/products/bubble-pillar.jpg',
+    desc: 'A playful bubble-textured pillar for everyday glow.' },
+  { id: 29, name: 'Pantalones Tiny Heart', category: 'Everyday', price: 30, color: '#e07a8f', image: '/img/products/tiny-heart.jpg',
+    desc: 'A tiny heart candle, ideal for return gifts.' },
+];
