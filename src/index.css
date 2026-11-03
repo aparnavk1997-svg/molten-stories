@@ -288,7 +288,7 @@ ul.plain { list-style: none; padding: 0; margin: 0; }
 .band h2 { color: var(--gold-light); }
 .band p.muted { max-width: 34rem; margin-bottom: 1.8rem; }
 .gifting { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 4rem; align-items: center; }
-.gifting-photo { width: 100%; height: 480px; object-fit: cover; object-position: center 40%; border-radius: var(--radius); box-shadow: 0 24px 48px -24px var(--shadow); }
+.gifting-photo { width: 100%; height: 480px; object-fit: cover; object-position: center top; border-radius: var(--radius); box-shadow: 0 24px 48px -24px var(--shadow); }
 .gifting-copy h2 { margin-bottom: 0.8rem; }
 .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 2rem; text-align: center; }
 .features h3 { color: var(--gold-light); font-size: 1.4rem; }
