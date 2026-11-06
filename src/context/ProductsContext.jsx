@@ -1,60 +1,125 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { products as seedProducts } from '../data/products';
+import { supabase, supabaseEnabled } from '../lib/supabase';
 
 const ProductsContext = createContext(null);
-const STORAGE_KEY = 'molten-stories-products-v3';
+// Render cache only: the database is the source of truth. It avoids a blank shop while the request is in flight.
+const CACHE_KEY = 'molten-stories-products-cache-v4';
+
+const fromRow = (r) => {
+  const p = {
+    id: r.id,
+    name: r.name,
+    category: r.category,
+    categories: r.categories?.length ? r.categories : [r.category],
+    price: Number(r.price),
+    color: r.color || '#c9a95c',
+    images: r.images || [],
+    desc: r.description || '',
+  };
+  if (r.old_price != null && Number(r.old_price) > p.price) p.old = Number(r.old_price);
+  if (r.disabled) p.disabled = true;
+  return p;
+};
+
+const toRow = (p) => ({
+  name: p.name,
+  category: p.category,
+  categories: p.categories || [],
+  price: p.price,
+  old_price: p.old && p.old > p.price ? p.old : null,
+  color: p.color || null,
+  images: p.images?.length ? p.images : p.image ? [p.image] : [],
+  description: p.desc || '',
+  disabled: !!p.disabled,
+});
 
 function loadInitial() {
+  if (!supabaseEnabled) return seedProducts;
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (Array.isArray(saved)) return saved;
+    const cached = JSON.parse(localStorage.getItem(CACHE_KEY));
+    if (Array.isArray(cached)) return cached;
   } catch {
-    /* ignore corrupt storage */
+    /* ignore corrupt cache */
   }
   return seedProducts;
 }
 
+const fail = (error) => {
+  throw new Error(error.message || 'Something went wrong talking to the database.');
+};
+
 export function ProductsProvider({ children }) {
   const [products, setProducts] = useState(loadInitial);
-  const [saveError, setSaveError] = useState('');
+  const [loading, setLoading] = useState(supabaseEnabled);
+  const [loadError, setLoadError] = useState('');
+
+  const refresh = useCallback(async () => {
+    if (!supabaseEnabled) return;
+    const { data, error } = await supabase.from('products').select('*').order('id');
+    if (error) {
+      setLoadError('Could not load the latest products.');
+    } else {
+      const list = data.map(fromRow);
+      setProducts(list);
+      setLoadError('');
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify(list));
+      } catch {
+        /* cache is optional */
+      }
+    }
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
-      setSaveError('');
-    } catch {
-      setSaveError('Could not save: browser storage is full. Try fewer or smaller photos, or remove some products.');
-    }
-  }, [products]);
+    refresh();
+    if (!supabaseEnabled) return undefined;
+    // Admins can also see hidden products, so reload when someone signs in or out.
+    const { data } = supabase.auth.onAuthStateChange(() => refresh());
+    return () => data.subscription.unsubscribe();
+  }, [refresh]);
 
   const value = useMemo(
     () => ({
       // Storefront only sees enabled products; the admin page uses allProducts.
       products: products.filter((p) => !p.disabled),
       allProducts: products,
-      saveError,
+      loading,
+      loadError,
       getProduct: (id) => products.find((p) => p.id === Number(id) && !p.disabled),
-      addProduct: (data) => {
-        const id = products.reduce((m, p) => Math.max(m, p.id), 0) + 1;
-        setProducts((list) => [...list, { ...data, id }]);
-        return id;
+      addProduct: async (data) => {
+        const { error } = await supabase.from('products').insert(toRow(data));
+        if (error) fail(error);
+        await refresh();
       },
-      updateProduct: (id, data) =>
-        setProducts((list) =>
-          list.map((p) => (p.id === id ? { ...data, id, ...(p.disabled ? { disabled: true } : {}) } : p))
-        ),
-      setProductEnabled: (id, enabled) =>
-        setProducts((list) =>
-          list.map((p) => {
-            if (p.id !== id) return p;
-            const { disabled, ...rest } = p;
-            return enabled ? rest : { ...rest, disabled: true };
-          })
-        ),
-      deleteProduct: (id) => setProducts((list) => list.filter((p) => p.id !== id)),
-      resetProducts: () => setProducts(seedProducts),
+      updateProduct: async (id, data) => {
+        const current = products.find((p) => p.id === id);
+        const { error } = await supabase
+          .from('products')
+          .update(toRow({ ...data, disabled: current?.disabled }))
+          .eq('id', id);
+        if (error) fail(error);
+        await refresh();
+      },
+      setProductEnabled: async (id, enabled) => {
+        const { error } = await supabase.from('products').update({ disabled: !enabled }).eq('id', id);
+        if (error) fail(error);
+        await refresh();
+      },
+      deleteProduct: async (id) => {
+        const { error } = await supabase.from('products').delete().eq('id', id);
+        if (error) fail(error);
+        await refresh();
+      },
+      // One-off: copy the built-in catalogue (src/data/products.js) into the database.
+      importDefaults: async () => {
+        const { error } = await supabase.from('products').insert(seedProducts.map(toRow));
+        if (error) fail(error);
+        await refresh();
+      },
     }),
-    [products, saveError]
+    [products, loading, loadError, refresh]
   );
 
   return <ProductsContext.Provider value={value}>{children}</ProductsContext.Provider>;
