@@ -6,6 +6,7 @@ import { useProducts } from '../context/ProductsContext';
 import { formatINR } from '../utils/pricing';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import AdminOrders from '../components/AdminOrders';
 
 const CATEGORY_OPTIONS = categories.filter((c) => c !== 'All');
 const MAX_IMAGE_SIDE = 900;
@@ -98,6 +99,7 @@ export default function Admin() {
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const [notice, setNotice] = useState('');
+  const [tab, setTab] = useState('products');
 
   if (!supabaseEnabled) {
     return (
@@ -248,10 +250,18 @@ export default function Admin() {
       <div className="section-head">
         <div>
           <p className="eyebrow">Admin</p>
-          <h1 className="h1-small">Manage products</h1>
+          <h1 className="h1-small">{tab === 'orders' ? 'Orders' : 'Manage products'}</h1>
         </div>
         <button className="btn btn-outline btn-small" onClick={signOut}>Sign out</button>
       </div>
+      <div className="btn-row">
+        <button className={`btn btn-small ${tab === 'products' ? '' : 'btn-outline'}`} onClick={() => setTab('products')}>Products</button>
+        <button className={`btn btn-small ${tab === 'orders' ? '' : 'btn-outline'}`} onClick={() => setTab('orders')}>Orders</button>
+      </div>
+      {tab === 'orders' ? (
+        <AdminOrders />
+      ) : (
+      <>
       <p className="muted small">Changes are saved to the database and appear for all visitors straight away.</p>
       {notice && <p className="admin-notice" role="status">{notice}</p>}
       {(errors.save || loadError) && <p className="error" role="alert">{errors.save || loadError}</p>}
@@ -385,6 +395,8 @@ export default function Admin() {
           </ul>
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }

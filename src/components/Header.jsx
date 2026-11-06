@@ -35,6 +35,7 @@ export default function Header() {
           <NavLink to="/account" onClick={close}>
             {profile?.username ? `@${profile.username}` : 'Account'}
           </NavLink>
+          <NavLink to="/track" onClick={close}>Track</NavLink>
           <NavLink
             to="/bag"
             data-bag-target
