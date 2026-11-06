@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { formatINR } from '../utils/pricing';
 
@@ -8,6 +8,37 @@ import { formatINR } from '../utils/pricing';
  */
 export default function ThankYouMoment({ order, onClose }) {
   const ref = useRef(null);
+  const codeRef = useRef(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!copied) return undefined;
+    const t = setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(t);
+  }, [copied]);
+
+  // A new order starts with the button back at "Copy".
+  useEffect(() => setCopied(false), [order]);
+
+  const selectCode = () => {
+    const el = codeRef.current;
+    if (!el) return;
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  };
+
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(order.code);
+      setCopied(true);
+    } catch {
+      // Clipboard blocked (older browser or insecure page): select the ID so Ctrl/Cmd+C works.
+      selectCode();
+    }
+  };
 
   useEffect(() => {
     if (!order) return;
@@ -67,20 +98,21 @@ export default function ThankYouMoment({ order, onClose }) {
               </linearGradient>
             </defs>
             {/* Halo light */}
-            <circle cx="60" cy="52" r="48" fill="url(#warm-aura)" opacity="0.75" />
-            {/* Outer flame */}
-            <path
-              className="flame-outer"
-              d="M60 16 C73 36 75 52 60 68 C45 52 47 36 60 16 Z"
-              fill="url(#flame-body)"
-            />
-            {/* Inner flame */}
-            <path
-              className="flame-inner"
-              d="M60 32 C65 43 65 54 60 62 C55 54 55 43 60 32 Z"
-              fill="#ffffff"
-              opacity="0.9"
-            />
+            <circle className="flame-halo" cx="60" cy="52" r="48" fill="url(#warm-aura)" opacity="0.75" />
+            {/* The flame lights up from the wick, then flickers */}
+            <g className="flame-lit">
+              <path
+                className="flame-outer"
+                d="M60 16 C73 36 75 52 60 68 C45 52 47 36 60 16 Z"
+                fill="url(#flame-body)"
+              />
+              <path
+                className="flame-inner"
+                d="M60 32 C65 43 65 54 60 62 C55 54 55 43 60 32 Z"
+                fill="#ffffff"
+                opacity="0.9"
+              />
+            </g>
             {/* Wick */}
             <rect x="58.5" y="65" width="3" height="13" rx="1.5" fill="var(--wick)" />
             {/* Candle Jar Base */}
@@ -113,11 +145,34 @@ export default function ThankYouMoment({ order, onClose }) {
         )}
 
         {order.code && (
-          <p className="small" style={{ textAlign: 'center', margin: '0.6rem 0' }}>
-            Your order ID: <strong>{order.code}</strong>
-            <br />
-            <Link to={`/track?code=${order.code}`} onClick={handleClose}>Track this order</Link>
-          </p>
+          <div className={`thankyou-id${copied ? ' is-copied' : ''}`}>
+            <p className="thankyou-id-label">{copied ? 'Copied to clipboard' : 'Your order ID'}</p>
+            <div className="thankyou-id-box">
+              <strong className="thankyou-code" ref={codeRef} onClick={selectCode}>{order.code}</strong>
+              <button
+                type="button"
+                className="thankyou-copy"
+                onClick={copyCode}
+                aria-label={`Copy order ID ${order.code}`}
+                title="Copy order ID"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  {copied ? (
+                    <path d="M5 12.5l4.5 4.5L19 7.5" />
+                  ) : (
+                    <>
+                      <rect x="9" y="9" width="11" height="11" rx="2" />
+                      <path d="M5 15V6a2 2 0 0 1 2-2h9" />
+                    </>
+                  )}
+                </svg>
+              </button>
+            </div>
+            <span className="visually-hidden" role="status" aria-live="polite">{copied ? 'Order ID copied to clipboard' : ''}</span>
+            <Link className="thankyou-track" to={`/track?code=${order.code}`} onClick={handleClose}>
+              Track this order <span aria-hidden="true">→</span>
+            </Link>
+          </div>
         )}
 
         {order.address?.name && (

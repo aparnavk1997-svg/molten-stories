@@ -934,20 +934,26 @@ body::after {
 .thankyou-glow-aura {
   position: absolute; inset: 0; border-radius: 50%;
   background: radial-gradient(circle at 50% 50%, rgba(255, 216, 153, 0.55), rgba(var(--accent-rgb), 0.22) 55%, transparent 75%);
-  animation: auraBreath 3.2s ease-in-out infinite alternate;
+  animation: auraIgnite 1.6s ease-out 0.3s backwards, auraBreath 3.2s ease-in-out 1.9s infinite alternate;
   pointer-events: none; filter: blur(12px);
 }
 .thankyou-flame-svg {
   width: 90px; height: 110px; position: relative; z-index: 1;
   filter: drop-shadow(0 0 14px rgba(255, 205, 130, 0.75));
 }
+/* The candle lights when the note opens: the flame grows up from the wick, then keeps flickering. */
+.flame-lit {
+  transform-origin: 60px 68px;
+  animation: flameIgnite 1s cubic-bezier(0.2, 0.9, 0.3, 1.25) 0.35s backwards;
+}
+.flame-halo { animation: haloIgnite 1.4s ease-out 0.35s backwards; }
 .flame-outer {
   transform-origin: 60px 68px;
-  animation: flameFlicker 2.4s ease-in-out infinite alternate;
+  animation: flameFlicker 1.5s ease-in-out infinite alternate;
 }
 .flame-inner {
   transform-origin: 60px 62px;
-  animation: flameFlicker 1.9s ease-in-out infinite alternate-reverse;
+  animation: flameFlicker 1.1s ease-in-out infinite alternate-reverse;
 }
 .thankyou-eyebrow {
   margin-bottom: 0.35rem; font-size: 0.72rem; letter-spacing: 0.16em;
@@ -970,6 +976,35 @@ body::after {
 .thankyou-dot {
   width: 7px; height: 7px; border-radius: 50%; background: var(--green);
 }
+/* order ID: one bordered control, code on the left and the copy icon on the right */
+.thankyou-id { display: flex; flex-direction: column; align-items: center; gap: 0.45rem; width: 100%; max-width: 320px; margin: 0.2rem 0 1rem; }
+.thankyou-id-label { margin: 0; font-size: 0.68rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); transition: color 0.2s; }
+.thankyou-id.is-copied .thankyou-id-label { color: var(--green); }
+.thankyou-id-box {
+  display: flex; align-items: stretch; width: 100%;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: calc(var(--radius) * 2);
+  overflow: hidden; transition: border-color 0.2s;
+}
+.thankyou-id-box:hover, .thankyou-id-box:focus-within { border-color: var(--gold); }
+.thankyou-id.is-copied .thankyou-id-box { border-color: var(--green); }
+.thankyou-code {
+  flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; padding: 0.7rem 0.9rem;
+  font: 600 1.02rem ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: 0.05em; color: var(--text);
+  -webkit-user-select: all; user-select: all; cursor: text;
+}
+.thankyou-copy {
+  display: grid; place-items: center; flex: 0 0 48px; padding: 0; cursor: pointer;
+  background: var(--surface); color: var(--gold); border: 0; border-left: 1px solid var(--border);
+  transition: background 0.2s, color 0.2s;
+}
+.thankyou-copy:hover { background: var(--gold); color: #fff; }
+.thankyou-id.is-copied .thankyou-copy { color: var(--green); background: var(--surface); }
+.thankyou-track { font-size: 0.82rem; color: var(--gold); text-decoration: none; border-bottom: 1px solid transparent; transition: border-color 0.2s; }
+.thankyou-track:hover { border-bottom-color: currentColor; }
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
 .thankyou-actions {
   display: flex; flex-direction: column; gap: 0.6rem; width: 100%; max-width: 320px;
 }
@@ -981,10 +1016,21 @@ body::after {
   0% { transform: scale(0.88); opacity: 0.55; }
   100% { transform: scale(1.15); opacity: 0.95; }
 }
+@keyframes auraIgnite {
+  from { transform: scale(0.4); opacity: 0; }
+  to { transform: scale(0.88); opacity: 0.55; }
+}
+@keyframes haloIgnite { from { opacity: 0; } to { opacity: 0.75; } }
+@keyframes flameIgnite {
+  0% { transform: scale(0); opacity: 0; }
+  60% { opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
 @keyframes flameFlicker {
-  0% { transform: scaleY(1) rotate(-1deg); }
-  50% { transform: scaleY(1.06) rotate(1.5deg) scaleX(0.96); }
-  100% { transform: scaleY(0.97) rotate(-0.5deg); }
+  0% { transform: scaleY(1) rotate(-2deg); }
+  35% { transform: scaleY(1.1) scaleX(0.94) rotate(2.5deg); }
+  70% { transform: scaleY(0.94) scaleX(1.04) rotate(-1.5deg); }
+  100% { transform: scaleY(1.06) scaleX(0.97) rotate(1deg); }
 }
 
 .smoke-wisp-1 {
@@ -1040,7 +1086,7 @@ body::after {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .thankyou-glow-aura, .flame-outer, .flame-inner, .smoke-wisp-1, .smoke-wisp-2,
+  .thankyou-glow-aura, .flame-lit, .flame-halo, .flame-outer, .flame-inner, .smoke-wisp-1, .smoke-wisp-2,
   .candle-halo, .candle-flame-outer, .candle-flame-inner, .drawer-row {
     animation: none;
   }
