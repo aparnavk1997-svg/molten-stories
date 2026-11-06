@@ -85,7 +85,7 @@ function Login() {
 
 export default function Admin() {
   const {
-    allProducts: products, loadError, addProduct, updateProduct, setProductEnabled, deleteProduct, importDefaults,
+    allProducts: products, loadError, addProduct, updateProduct, setProductEnabled, deleteProduct,
   } = useProducts();
   const [session, setSession] = useState(undefined); // undefined = still checking
   const [busy, setBusy] = useState(false);
@@ -232,11 +232,6 @@ export default function Admin() {
     if (ok && editingId === p.id) reset();
   };
 
-  const importOriginal = () => {
-    if (!window.confirm('Copy the original catalogue into the database?')) return;
-    return run(importDefaults, 'Imported the original catalogue.');
-  };
-
   const signOut = () => supabase.auth.signOut();
 
   return (
@@ -379,13 +374,6 @@ export default function Admin() {
               </li>
             ))}
           </ul>
-          {products.length === 0 && (
-            <div className="panel-pad">
-              <button className="btn btn-outline btn-small" onClick={importOriginal} disabled={busy}>
-                Import the original catalogue
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>

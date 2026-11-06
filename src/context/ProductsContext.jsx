@@ -1,5 +1,4 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { products as seedProducts } from '../data/products';
 import { supabase, supabaseEnabled } from '../lib/supabase';
 
 const ProductsContext = createContext(null);
@@ -35,14 +34,14 @@ const toRow = (p) => ({
 });
 
 function loadInitial() {
-  if (!supabaseEnabled) return seedProducts;
+  if (!supabaseEnabled) return [];
   try {
     const cached = JSON.parse(localStorage.getItem(CACHE_KEY));
     if (Array.isArray(cached)) return cached;
   } catch {
     /* ignore corrupt cache */
   }
-  return seedProducts;
+  return [];
 }
 
 const fail = (error) => {
@@ -109,12 +108,6 @@ export function ProductsProvider({ children }) {
       },
       deleteProduct: async (id) => {
         const { error } = await supabase.from('products').delete().eq('id', id);
-        if (error) fail(error);
-        await refresh();
-      },
-      // One-off: copy the built-in catalogue (src/data/products.js) into the database.
-      importDefaults: async () => {
-        const { error } = await supabase.from('products').insert(seedProducts.map(toRow));
         if (error) fail(error);
         await refresh();
       },
