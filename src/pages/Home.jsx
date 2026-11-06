@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
-import ProductCard from '../components/ProductCard';
 import Reveal from '../components/Reveal';
+import ProductCarousel from '../components/ProductCarousel';
 import Testimonials from '../components/Testimonials';
 import InstagramStrip from '../components/InstagramStrip';
 import { useProducts } from '../context/ProductsContext';
@@ -66,11 +66,7 @@ export default function Home() {
           </div>
           <Link to="/shop" className="link">View all →</Link>
         </Reveal>
-        <div className="grid">
-          {products.slice(0, 4).map((p) => (
-            <ProductCard key={p.id} product={p} />
-          ))}
-        </div>
+        <ProductCarousel products={products.slice(0, 8)} label="Shop our collection" />
       </section>
 
       <section className="band">

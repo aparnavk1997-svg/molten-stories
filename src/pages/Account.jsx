@@ -118,9 +118,11 @@ function SignInForm({ onForgot }) {
         autoComplete="current-password"
         error={shown('password')}
       />
-      <button type="button" className="link-btn" onClick={onForgot}>Forgot password?</button>
+      {/* Pressing these must not blur the autofocused field: its error message would appear, push the button
+          down, and the click would miss it. */}
+      <button type="button" className="link-btn" onMouseDown={(e) => e.preventDefault()} onClick={onForgot}>Forgot password?</button>
       {error && <span className="error" role="alert">{error}</span>}
-      <button className="btn btn-block" type="submit" disabled={busy}>
+      <button className="btn btn-block" type="submit" disabled={busy} onMouseDown={(e) => e.preventDefault()}>
         {busy ? 'Signing in…' : 'Sign in'}
       </button>
     </form>
@@ -286,7 +288,7 @@ function SignUpForm() {
           <input {...props('fullName')} autoComplete="name" aria-required="true" />
         </Field>
         <Field id="su-username" label="Username" required error={shown('username')}>
-          <input {...props('username')} autoComplete="username" placeholder="e.g. candle_lover" aria-required="true" />
+          <input {...props('username')} autoComplete="username" placeholder="3-20 letters, numbers or _" aria-required="true" />
         </Field>
       </div>
       <div className="two-col">
