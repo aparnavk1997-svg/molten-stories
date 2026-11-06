@@ -9,6 +9,7 @@ import { formatINR } from '../utils/pricing';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import AdminOrders from '../components/AdminOrders';
+import AdminReviews from '../components/AdminReviews';
 
 const CATEGORY_OPTIONS = categories.filter((c) => c !== 'All');
 const EMPTY = { name: '', categories: [CATEGORY_OPTIONS[0]], price: '', old: '', color: '#c9a95c', desc: '', images: [] };
@@ -270,16 +271,19 @@ export default function Admin() {
       <div className="section-head">
         <div>
           <p className="eyebrow">Admin</p>
-          <h1 className="h1-small">{tab === 'orders' ? 'Orders' : 'Manage products'}</h1>
+          <h1 className="h1-small">{tab === 'orders' ? 'Orders' : tab === 'reviews' ? 'Reviews' : 'Manage products'}</h1>
         </div>
         <button className="btn btn-outline btn-small" onClick={signOut}>Sign out</button>
       </div>
       <div className="btn-row">
         <button className={`btn btn-small ${tab === 'products' ? '' : 'btn-outline'}`} onClick={() => setTab('products')}>Products</button>
         <button className={`btn btn-small ${tab === 'orders' ? '' : 'btn-outline'}`} onClick={() => setTab('orders')}>Orders</button>
+        <button className={`btn btn-small ${tab === 'reviews' ? '' : 'btn-outline'}`} onClick={() => setTab('reviews')}>Reviews</button>
       </div>
       {tab === 'orders' ? (
         <AdminOrders />
+      ) : tab === 'reviews' ? (
+        <AdminReviews />
       ) : (
       <>
       <p className="muted small">Changes are saved to the database and appear for all visitors straight away.</p>

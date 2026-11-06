@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { INSTAGRAM_URL, STORY_MESSAGE, whatsappUrl } from '../utils/whatsapp';
+import { supabase, supabaseEnabled } from '../lib/supabase';
 
-// Placeholder reviews: replace with real customer words (and names) before launch.
-const REVIEWS = [
+// Placeholder reviews, shown only until at least one real review has been enabled in /admin.
+const PLACEHOLDER_REVIEWS = [
   { quote: 'The scent filled the whole room without being overpowering. It now sits on my desk every evening.', name: 'Anjali', place: 'Kochi' },
   { quote: 'I ordered a gift box for my sister and she loved every detail, right down to the little card.', name: 'Meera', place: 'Bengaluru' },
   { quote: 'Burns evenly and looks beautiful even when unlit. Easily the prettiest thing on my shelf.', name: 'Riya', place: 'Chennai' },
@@ -13,11 +14,34 @@ const REVIEWS = [
 const INTERVAL = 6000;
 
 export default function Testimonials() {
+  const [reviews, setReviews] = useState(PLACEHOLDER_REVIEWS);
+  const REVIEWS = reviews;
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const [reduced] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
   );
+
+  // Enabled reviews from the database, in the order set in /admin (position 1, 2, 3 ...).
+  useEffect(() => {
+    if (!supabaseEnabled) return;
+    let cancelled = false;
+    supabase
+      .from('reviews')
+      .select('id, name, city, body, images, sort_order, created_at')
+      .eq('status', 'approved')
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: false })
+      .limit(12)
+      .then(({ data }) => {
+        if (cancelled || !data?.length) return;
+        setReviews(data.map((r) => ({ quote: r.body, name: r.name, place: r.city, images: r.images || [] })));
+        setIndex(0);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (paused || reduced) return;
@@ -43,8 +67,13 @@ export default function Testimonials() {
 
       <figure className="review" key={index} aria-live={paused ? 'polite' : 'off'}>
         <blockquote>“{r.quote}”</blockquote>
+        {r.images?.length > 0 && (
+          <div className="review-photos">
+            {r.images.map((src) => <img key={src} src={src} alt={`Photo from ${r.name}`} loading="lazy" />)}
+          </div>
+        )}
         <figcaption>
-          {r.name} · <span className="muted">{r.place}</span>
+          {r.name}{r.place && <> · <span className="muted">{r.place}</span></>}
         </figcaption>
       </figure>
 

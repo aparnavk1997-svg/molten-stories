@@ -1803,3 +1803,7 @@ select {
 
 .del-summary { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 0.4rem; }
 .del-summary .detail-address { padding-top: 0; }
+
+/* Photos attached to customer reviews */
+.review-photos { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; margin: 0.75rem 0; }
+.review-photos img { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; }
