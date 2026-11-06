@@ -8,6 +8,8 @@ import { fileToSource } from '../utils/imageFit';
 import { formatINR } from '../utils/pricing';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import AdminOrders from '../components/AdminOrders';
+import AdminReviews from '../components/AdminReviews';
 
 const CATEGORY_OPTIONS = categories.filter((c) => c !== 'All');
 const EMPTY = { name: '', categories: [CATEGORY_OPTIONS[0]], price: '', old: '', color: '#c9a95c', desc: '', images: [] };
@@ -82,13 +84,17 @@ export default function Admin() {
   const [notice, setNotice] = useState('');
   // Photos waiting to be fitted to the frame: { src, replaceIndex } (replaceIndex null = add as new).
   const [fitQueue, setFitQueue] = useState([]);
+  const [tab, setTab] = useState('products');
 
   // Arriving from a product image's edit button (/admin?edit=ID): open that product in the form.
   const editParam = searchParams.get('edit');
   useEffect(() => {
     if (!isAdmin || !editParam) return;
     const target = products.find((p) => p.id === Number(editParam));
-    if (target) startEdit(target);
+    if (target) {
+      setTab('products');
+      startEdit(target);
+    }
     if (target || !productsLoading) setSearchParams({}, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin, editParam, products, productsLoading]);
@@ -265,10 +271,21 @@ export default function Admin() {
       <div className="section-head">
         <div>
           <p className="eyebrow">Admin</p>
-          <h1 className="h1-small">Manage products</h1>
+          <h1 className="h1-small">{tab === 'orders' ? 'Orders' : tab === 'reviews' ? 'Reviews' : 'Manage products'}</h1>
         </div>
         <button className="btn btn-outline btn-small" onClick={signOut}>Sign out</button>
       </div>
+      <div className="btn-row">
+        <button className={`btn btn-small ${tab === 'products' ? '' : 'btn-outline'}`} onClick={() => setTab('products')}>Products</button>
+        <button className={`btn btn-small ${tab === 'orders' ? '' : 'btn-outline'}`} onClick={() => setTab('orders')}>Orders</button>
+        <button className={`btn btn-small ${tab === 'reviews' ? '' : 'btn-outline'}`} onClick={() => setTab('reviews')}>Reviews</button>
+      </div>
+      {tab === 'orders' ? (
+        <AdminOrders />
+      ) : tab === 'reviews' ? (
+        <AdminReviews />
+      ) : (
+      <>
       <p className="muted small">Changes are saved to the database and appear for all visitors straight away.</p>
       {notice && <p className="admin-notice" role="status">{notice}</p>}
       {(errors.save || loadError) && <p className="error" role="alert">{errors.save || loadError}</p>}
@@ -413,6 +430,8 @@ export default function Admin() {
           onApply={applyFit}
           onCancel={() => setFitQueue((q) => q.slice(1))}
         />
+      )}
+      </>
       )}
     </div>
   );

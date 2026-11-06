@@ -112,6 +112,14 @@ export default function ThankYouMoment({ order, onClose }) {
           </div>
         )}
 
+        {order.code && (
+          <p className="small" style={{ textAlign: 'center', margin: '0.6rem 0' }}>
+            Your order ID: <strong>{order.code}</strong>
+            <br />
+            <Link to={`/track?code=${order.code}`} onClick={handleClose}>Track this order</Link>
+          </p>
+        )}
+
         {order.address?.name && (
           <p className="thankyou-dest small muted" style={{ margin: '0.6rem 0 1.2rem', textAlign: 'center' }}>
             Delivering to <strong>{order.address.name}</strong>{order.address.city ? ` · ${order.address.city}` : ''}{order.address.pin ? ` (${order.address.pin})` : ''}

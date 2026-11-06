@@ -48,7 +48,7 @@ export default function BagDrawer() {
       navigate('/bag');
       return;
     }
-    placeOrder(items, giftOptions);
+    placeOrder(items, giftOptions, { clearBag: true });
   };
 
   const handleClear = () => {

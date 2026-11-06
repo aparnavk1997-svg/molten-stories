@@ -77,3 +77,13 @@ Setup (after the first migration):
 4. Emails: Supabase's built-in sender allows only a handful of emails per hour. Before launch, add a custom SMTP provider (Authentication → Emails → SMTP settings), or turn off **Confirm email**.
 
 To add another admin, insert their user id into `public.admins`.
+
+## Instagram feed
+
+The "Follow our little moments" strip on the home page can show your latest Instagram posts. It reads a public JSON feed from a feed service such as [Behold](https://behold.so), set in `VITE_INSTAGRAM_FEED_URL`. Without it, or if the feed can't be reached, the strip shows the static photos in [`InstagramStrip.jsx`](src/components/InstagramStrip.jsx).
+
+1. Create a free account at [behold.so](https://behold.so), choose **Create feed**, and connect `@molten_stories` (works with Creator and Business accounts; no Facebook Page needed).
+2. Open the feed and copy its **JSON feed URL** (it looks like `https://feeds.behold.so/XXXXXXXX`). It is public, so it is safe to put in front-end config.
+3. Add `VITE_INSTAGRAM_FEED_URL=<that url>` to `.env.local`, and to your host's environment settings (see Deployment), then rebuild.
+
+New posts appear after the feed service refreshes (Behold's free plan checks periodically) plus up to 30 minutes of browser caching. Your Instagram account needs to be public for visitors to open the post links.

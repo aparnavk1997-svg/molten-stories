@@ -3,7 +3,8 @@ import ThankYouMoment from '../components/ThankYouMoment';
 import { useProducts } from './ProductsContext';
 import { MAX_QTY, GIFT_WRAP_PRICE, GIFT_BOX_PRICE, GIFT_NOTE_MAX, deliveryInfo } from '../utils/pricing';
 import { flyToBag } from '../utils/flyToBag';
-import { placeOrderOnWhatsApp } from '../utils/whatsapp';
+import { orderMessage, whatsappUrl } from '../utils/whatsapp';
+import { saveOrder } from '../utils/placeOrder';
 
 const CartContext = createContext(null);
 const STORAGE_KEY = 'molten-stories-bag-v2';
@@ -234,8 +235,10 @@ export function CartProvider({ children }) {
   const delivery = hasAnyItems ? deliveryInfo(pin, candlesSubtotal) : null;
   const total = candlesSubtotal + wrapFee + (delivery?.fee ?? 0);
 
+  // `clearBag` is set when ordering from the bag. The "Place order" button on a product page orders a single
+  // candle without touching the bag, so it leaves the bag alone.
   const placeOrder = useCallback(
-    (customItems, customGift) => {
+    (customItems, customGift, { clearBag = false } = {}) => {
       const orderPayload = {
         items: customItems || resolvedItems,
         hampers: resolvedHampers,
@@ -247,10 +250,11 @@ export function CartProvider({ children }) {
         },
       };
 
-      placeOrderOnWhatsApp(orderPayload.items, {
-        ...orderPayload.gift,
-        hampers: orderPayload.hampers,
-      });
+      // Open the WhatsApp tab right away (inside the click) so browsers don't block it, then point it at the
+      // message once the order is saved and has its ID. If saving fails the order is still sent, just without an ID.
+      const win = window.open('about:blank', '_blank');
+      if (win) win.opener = null;
+      const giftWithHampers = { ...orderPayload.gift, hampers: orderPayload.hampers };
 
       setOrderSuccess({
         items: orderPayload.items,
@@ -260,6 +264,25 @@ export function CartProvider({ children }) {
         total,
       });
       setDrawerOpen(false);
+
+      // The order is captured above, so the bag, gift wrap and gift note can be reset for the next order.
+      // The delivery address and PIN stay saved for convenience.
+      if (clearBag) {
+        dispatch({ type: 'CLEAR' });
+        setGift({ wrap: false, note: '' });
+      }
+
+      saveOrder({
+        items: orderPayload.items,
+        hampers: orderPayload.hampers,
+        gift: orderPayload.gift,
+        address,
+      }).then((saved) => {
+        const url = whatsappUrl(orderMessage(orderPayload.items, giftWithHampers, saved?.code || ''));
+        if (win) win.location.href = url;
+        else window.location.href = url;
+        if (saved) setOrderSuccess((o) => (o ? { ...o, code: saved.code } : o));
+      });
     },
     [resolvedItems, resolvedHampers, gift, pin, address, total]
   );
