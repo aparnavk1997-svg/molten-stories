@@ -12,6 +12,7 @@ import About from './pages/About';
 import Contact from './pages/Contact';
 import Admin from './pages/Admin';
 import Account from './pages/Account';
+import Track from './pages/Track';
 import Policy from './pages/Policy';
 import GiftBox from './pages/GiftBox';
 import Saved from './pages/Saved';
@@ -47,6 +48,7 @@ export default function App() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/policies/:slug" element={<Policy />} />
           <Route path="/account" element={<Account />} />
+          <Route path="/track" element={<Track />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

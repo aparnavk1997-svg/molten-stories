@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { supabase } from '../lib/supabase';
+import { formatINR } from '../utils/pricing';
+import { formatDate, statusLabel } from '../utils/orders';
 
 function SignInForm() {
   const { signIn } = useAuth();
@@ -101,6 +104,44 @@ function SignUpForm() {
   );
 }
 
+function MyOrders({ userId }) {
+  const [orders, setOrders] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase
+      .from('orders')
+      .select('id, code, status, total, created_at, items')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => { if (!cancelled) setOrders(data || []); });
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  return (
+    <div className="panel panel-pad">
+      <h3 className="panel-title">My orders</h3>
+      {orders === null && <p className="muted">Loading…</p>}
+      {orders && orders.length === 0 && <p className="muted">No orders yet. Orders confirmed on WhatsApp will appear here.</p>}
+      {orders && orders.length > 0 && (
+        <ul className="plain">
+          {orders.map((o) => (
+            <li key={o.id} className="admin-row">
+              <div className="cart-info">
+                <Link to={`/track?code=${o.code}`}><strong>{o.code}</strong></Link>
+                <span className="muted small">
+                  {formatDate(o.created_at)} · {o.items.map((i) => `${i.name} ×${i.qty}`).join(', ')} · {formatINR(o.total)}
+                </span>
+              </div>
+              <strong>{statusLabel(o.status)}</strong>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function ProfileForm() {
   const { user, profile, isAdmin, saveProfile, signOut } = useAuth();
   const { setAddress } = useCart();
@@ -197,6 +238,8 @@ function ProfileForm() {
         {notice && <span className="admin-notice" role="status">{notice}</span>}
         <button className="btn" type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save profile'}</button>
       </form>
+
+      {user && <MyOrders userId={user.id} />}
     </>
   );
 }
