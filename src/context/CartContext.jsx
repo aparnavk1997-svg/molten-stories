@@ -235,8 +235,10 @@ export function CartProvider({ children }) {
   const delivery = hasAnyItems ? deliveryInfo(pin, candlesSubtotal) : null;
   const total = candlesSubtotal + wrapFee + (delivery?.fee ?? 0);
 
+  // `clearBag` is set when ordering from the bag. The "Place order" button on a product page orders a single
+  // candle without touching the bag, so it leaves the bag alone.
   const placeOrder = useCallback(
-    (customItems, customGift) => {
+    (customItems, customGift, { clearBag = false } = {}) => {
       const orderPayload = {
         items: customItems || resolvedItems,
         hampers: resolvedHampers,
@@ -262,6 +264,13 @@ export function CartProvider({ children }) {
         total,
       });
       setDrawerOpen(false);
+
+      // The order is captured above, so the bag, gift wrap and gift note can be reset for the next order.
+      // The delivery address and PIN stay saved for convenience.
+      if (clearBag) {
+        dispatch({ type: 'CLEAR' });
+        setGift({ wrap: false, note: '' });
+      }
 
       saveOrder({
         items: orderPayload.items,

@@ -47,7 +47,7 @@ export default function Cart() {
       el?.focus();
       return;
     }
-    placeOrder(items, giftOptions);
+    placeOrder(items, giftOptions, { clearBag: true });
   };
 
   const handleClear = () => {

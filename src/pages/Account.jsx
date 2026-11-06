@@ -412,6 +412,35 @@ function PrimaryAddressForm({ profile, onSave, onCancel }) {
   );
 }
 
+function AddressEmpty({ icon, title, text, action, onAction }) {
+  return (
+    <div className="panel panel-pad addr-empty">
+      <span className="addr-empty-icon" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          {icon}
+        </svg>
+      </span>
+      <h3>{title}</h3>
+      <p className="muted">{text}</p>
+      <button type="button" className="btn btn-small" onClick={onAction}>{action}</button>
+    </div>
+  );
+}
+
+const PIN_ICON = (
+  <>
+    <path d="M12 21s-7-6.2-7-11.2A7 7 0 0 1 19 9.8C19 14.8 12 21 12 21z" />
+    <circle cx="12" cy="9.8" r="2.4" />
+  </>
+);
+const HOUSE_ICON = (
+  <>
+    <path d="M4 11l8-6.5L20 11" />
+    <path d="M6 9.5V20h12V9.5" />
+    <path d="M10 20v-5h4v5" />
+  </>
+);
+
 function AddressesTab({ goToDetails }) {
   const { profile, primaryAddress, addresses, saveProfile, saveAddress, deleteAddress } = useAuth();
   const { setAddress } = useCart();
@@ -458,50 +487,65 @@ function AddressesTab({ goToDetails }) {
 
   const hasPrimaryParts = profile && (profile.street || profile.city || profile.state || profile.pin);
   const primaryMissingContact = hasPrimaryParts && !primaryAddress;
+  // The "Other addresses" section only appears once the primary address itself is saved (street, city, state, PIN),
+  // or when extra addresses already exist, so they never get hidden. Name and phone are not needed for this:
+  // each extra address carries its own.
+  const canAddOther = Boolean(
+    profile && profile.street?.trim() && profile.city?.trim() && profile.state?.trim() && isPin(profile.pin)
+  );
+  const showOther = canAddOther || addresses.length > 0;
 
   return (
     <div>
       {error && <p className="error" role="alert">{error}</p>}
 
-      <ul className="plain addr-grid">
-        <li className="panel panel-pad addr-card is-default">
-          <div className="addr-top">
-            <strong>Primary shipping address</strong>
-            <span className="my-order-status">Primary</span>
-          </div>
-          {hasPrimaryParts ? (
+      {hasPrimaryParts ? (
+        <ul className="plain addr-grid">
+          <li className="panel panel-pad addr-card is-default">
+            <div className="addr-top">
+              <strong>Primary shipping address</strong>
+              <span className="my-order-status">Primary</span>
+            </div>
             <address className="detail-address">
               <span>{profile.fullName || '—'}</span>
               <span>{profile.street}</span>
               <span>{[profile.city, profile.state].filter(Boolean).join(', ')}{profile.pin ? ` - ${profile.pin}` : ''}</span>
               <span className="muted small">{profile.phone || '—'}</span>
             </address>
-          ) : (
-            <p className="muted small">No primary address yet. It fills in your bag automatically when you order.</p>
-          )}
-          {primaryMissingContact && (
-            <p className="muted small">
-              Add your full name and a 10-digit phone in{' '}
-              <button type="button" className="link-btn" onClick={goToDetails}>Details</button>{' '}
-              so this can be used at checkout.
-            </p>
-          )}
-          <div className="addr-actions">
-            <button type="button" className="link-btn" onClick={() => setEditing('primary')}>
-              {hasPrimaryParts ? 'Edit' : 'Add address'}
-            </button>
-            {primaryAddress && (
-              <button type="button" className="link-btn" onClick={() => useInBag(primaryAddress)}>Use in my bag</button>
+            {primaryMissingContact && (
+              <p className="muted small">
+                Add your full name and a 10-digit phone in{' '}
+                <button type="button" className="link-btn" onClick={goToDetails}>Details</button>{' '}
+                so this can be used at checkout.
+              </p>
             )}
-          </div>
-        </li>
-      </ul>
+            <div className="addr-actions">
+              <button type="button" className="link-btn" onClick={() => setEditing('primary')}>Edit</button>
+              {primaryAddress && (
+                <button type="button" className="link-btn" onClick={() => useInBag(primaryAddress)}>Use in my bag</button>
+              )}
+            </div>
+          </li>
+        </ul>
+      ) : (
+        <AddressEmpty
+          icon={PIN_ICON}
+          title="Add your primary address"
+          text="Save it once and we'll fill it into your bag every time you order."
+          action="Add address"
+          onAction={() => setEditing('primary')}
+        />
+      )}
 
-      <h3 className="addr-heading">Other addresses</h3>
-      {addresses.length === 0 ? (
-        <div className="panel panel-pad addr-empty">
-          <p className="muted">No other addresses. Add one for gifts or work, and pick it at checkout.</p>
-        </div>
+      {showOther && <h3 className="addr-heading">Other addresses</h3>}
+      {showOther && (addresses.length === 0 ? (
+        <AddressEmpty
+          icon={HOUSE_ICON}
+          title="No other addresses yet"
+          text="Add one for gifts or work, and pick it at checkout."
+          action="Add another address"
+          onAction={() => setEditing('new')}
+        />
       ) : (
         <ul className="plain addr-grid">
           {addresses.map((a) => (
@@ -532,10 +576,12 @@ function AddressesTab({ goToDetails }) {
             </li>
           ))}
         </ul>
+      ))}
+      {addresses.length > 0 && canAddOther && (
+        <div className="btn-row">
+          <button type="button" className="btn btn-outline btn-small" onClick={() => setEditing('new')}>+ Add another address</button>
+        </div>
       )}
-      <div className="btn-row">
-        <button type="button" className="btn btn-outline btn-small" onClick={() => setEditing('new')}>+ Add another address</button>
-      </div>
     </div>
   );
 }

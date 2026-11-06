@@ -124,27 +124,6 @@ export function reviewMessage({ name, city, product, rating, text }) {
   );
 }
 
-/** items: [{ id, name, price, qty }]; boxPrice: flat gift box charge; note: optional gift message */
-export function giftBoxMessage(items, note = '', boxPrice = 0) {
-  const lines = items.map(
-    (i) => `• ${i.name} (ID: ${productCode(i.id)}) x ${i.qty} — ${formatINR(i.price * i.qty)}`
-  );
-  const count = items.reduce((s, i) => s + i.qty, 0);
-  const candlesTotal = items.reduce((s, i) => s + i.price * i.qty, 0);
-  return (
-    `Hello Molten Stories! I'd like to order a gift box of ${count} candles:\n\n${lines.join('\n')}\n\n` +
-    `Candles: ${formatINR(candlesTotal)}\n` +
-    `Gift box: ${formatINR(boxPrice)}\n` +
-    `Total: ${formatINR(candlesTotal + boxPrice)}\n` +
-    (candlesTotal >= FREE_DELIVERY_MIN ? `Delivery: Free\n` : '') +
-    `\n` +
-    (note ? `Gift message: "${note}"\n\n` : '') +
-    (candlesTotal >= FREE_DELIVERY_MIN
-      ? `Please confirm availability, packing and payment details.`
-      : `Please confirm availability, packing, delivery charges and payment details.`)
-  );
-}
-
 /** Opens WhatsApp in a new tab with the order pre-filled. */
 export function placeOrderOnWhatsApp(items, gift, orderCode = '') {
   window.open(whatsappUrl(orderMessage(items, gift, orderCode)), '_blank', 'noopener');

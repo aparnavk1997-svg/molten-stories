@@ -6,7 +6,6 @@ import { categories, categoriesOf } from '../data/products';
 import { useProducts } from '../context/ProductsContext';
 import { useCart } from '../context/CartContext';
 import { FREE_DELIVERY_MIN, GIFT_BOX_PRICE, formatINR } from '../utils/pricing';
-import { giftBoxMessage, whatsappUrl } from '../utils/whatsapp';
 
 const GIFT_MIN = 2;
 const GIFT_MAX = 10; // total candles in the box, counting repeats
@@ -16,7 +15,7 @@ export default function GiftBox() {
   const [searchParams] = useSearchParams();
   const editingHamperId = searchParams.get('hamperId');
 
-  const { hampers, addHamper, updateHamper, setOrderSuccess } = useCart();
+  const { hampers, addHamper, updateHamper } = useCart();
 
   const editingHamper = useMemo(() => {
     if (editingHamperId && Array.isArray(hampers)) {
@@ -77,21 +76,12 @@ export default function GiftBox() {
       return next > 0 ? { ...rest, [id]: next } : rest;
     });
 
-  const send = () => {
-    window.open(whatsappUrl(giftBoxMessage(items, note.trim(), GIFT_BOX_PRICE)), '_blank', 'noopener');
-    setOrderSuccess({
-      items,
-      total: candlesTotal + GIFT_BOX_PRICE,
-      gift: { note: note.trim(), isGiftBox: true },
-    });
-  };
-
   return (
     <div className="container page">
       <p className="eyebrow">Bespoke Hampers</p>
       <h1 className="h1-small">Build Your Gift Box</h1>
       <p className="lead">
-        Choose 2 to 10 candles, add an optional personal note, and add to your bag or order directly on WhatsApp.
+        Choose 2 to 10 candles, add an optional personal note, and add the box to your bag.
       </p>
 
       <div className="cart-layout">
@@ -236,14 +226,6 @@ export default function GiftBox() {
               {added
                 ? (editingHamperId ? '✓ Updated in bag!' : '✓ Added to bag!')
                 : (editingHamperId ? 'Update gift box in bag' : 'Add gift box to bag')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-outline btn-block"
-              disabled={!ready}
-              onClick={send}
-            >
-              Order via WhatsApp
             </button>
           </div>
         </aside>

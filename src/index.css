@@ -118,6 +118,9 @@ p { margin: 0 0 0.8em; }
 .narrow { max-width: 720px; }
 .page { padding: 3rem 0 5rem; }
 .section { padding: 4.5rem 0; }
+/* When one section follows another, don't stack both paddings. */
+.section-flush { padding-bottom: 0; }
+.section-flush + .section { padding-top: 3.5rem; }
 .center-text { text-align: center; }
 .muted { color: var(--muted); }
 .small { font-size: 0.82rem; }
@@ -438,56 +441,47 @@ body::after {
 .features p { font-size: 0.85rem; }
 
 /* ---------- testimonials ---------- */
-.testimonials { text-align: left; }
-.testimonials h2 { margin: 0; }
-.rv-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 2rem; }
-.rv-side { display: flex; align-items: center; gap: 1.6rem; flex-wrap: wrap; }
-.rv-summary { display: flex; align-items: center; gap: 0.8rem; margin: 0; }
-.rv-summary > span { display: flex; flex-direction: column; gap: 0.15rem; font-size: 0.82rem; }
-.rv-score { font: 400 2.6rem/1 'Fraunces', serif; color: var(--gold-light); }
-.rv-controls { display: flex; align-items: center; gap: 0.5rem; }
-.rv-arrow {
-  width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface);
-  color: var(--gold-light); font-size: 1.4rem; line-height: 1; cursor: pointer; display: grid; place-items: center; padding: 0 0 3px;
-  transition: border-color 0.25s, color 0.25s, opacity 0.25s;
-}
-.rv-arrow:hover:not(:disabled) { border-color: var(--gold); }
-.rv-arrow:disabled { opacity: 0.35; cursor: default; }
-.rv-track {
-  display: flex; gap: 1.2rem; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth;
-  padding: 0.3rem 0.3rem 1rem; margin: 0 -0.3rem; scrollbar-width: none;
-}
-.rv-track::-webkit-scrollbar { display: none; }
-.rv-track:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: var(--radius); }
-/* Cards share the row when there are few, and keep a readable width (then scroll) when there are many. */
-.rv-card {
-  flex: 1 0 min(360px, 84%); scroll-snap-align: start; display: flex; flex-direction: column; overflow: hidden;
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-  transition: border-color 0.3s, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.rv-card:hover { border-color: var(--gold); transform: translateY(-3px); }
-.rv-photo { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; display: block; background: var(--surface-2); }
-.rv-body { flex: 1; display: flex; flex-direction: column; gap: 1rem; padding: 1.6rem 1.6rem 1.4rem; position: relative; }
-.rv-photo-empty { display: grid; place-items: center; background: var(--tint-strong); color: var(--gold); font: 400 6rem/1 'Fraunces', serif; padding-top: 2.2rem; }
-.rv-card blockquote { margin: 0; flex: 1; font-family: 'Fraunces', serif; font-size: 1.2rem; line-height: 1.55; color: var(--text); overflow-wrap: anywhere; }
-.rv-stars { display: inline-flex; gap: 2px; }
+.testimonials { text-align: center; padding-bottom: 0; }
+.testimonials + .insta { padding-top: 3rem; }
+.testimonials h2 { margin: 0 0 2rem; }
+.review { margin: 0 auto; max-width: 42rem; position: relative; animation: rise 0.6s ease-out both; outline-offset: 6px; }
+.review blockquote { margin: 0.9rem 0 1.2rem; font-family: 'Fraunces', serif; font-size: clamp(1.25rem, 2.6vw, 1.7rem); line-height: 1.5; color: var(--gold-light); min-height: 5.5rem; }
+.review figcaption { font-size: 0.85rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); }
+.rv-stars { display: inline-flex; gap: 3px; }
 .rv-stars svg { fill: none; stroke: var(--gold); stroke-width: 1.4; stroke-linejoin: round; }
 .rv-stars svg.on { fill: var(--gold); }
-.rv-who { display: flex; align-items: center; gap: 0.75rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.88rem; }
-.rv-meta { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
-.rv-name { color: var(--muted); }
-.rv-name strong { color: var(--text); font-weight: 500; }
-.rv-product { font-size: 0.78rem; color: var(--muted); }
-.rv-avatar {
-  width: 38px; height: 38px; border-radius: 50%; flex: none; display: grid; place-items: center;
-  background: var(--tint-strong); color: var(--gold-light); font: 400 1.05rem 'Fraunces', serif;
+
+/* Hover / focus reveal: photos float into the empty space beside the quote, so the section needs no extra height. */
+.review-more {
+  position: absolute; top: 50%; left: calc(100% + 1.5rem); width: 190px; transform: translate(-10px, -50%);
+  display: flex; flex-direction: column; align-items: flex-start; gap: 0.6rem; text-align: left;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.review-share { margin: 1.4rem 0 0; font-size: 0.9rem; color: var(--muted); }
-@media (max-width: 760px) {
-  .rv-side { width: 100%; justify-content: space-between; }
-  .rv-card { flex-basis: 84%; }
+.review:hover .review-more, .review:focus .review-more, .review:focus-within .review-more { opacity: 1; transform: translate(0, -50%); pointer-events: auto; }
+.review-more .review-photos { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; margin: 0; width: 100%; }
+.review-more .review-photos img { width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+.review-more .review-photos:has(img:only-child) { grid-template-columns: 1fr; }
+.review-more .review-photos img:hover { transform: scale(1.06); }
+.review-product { margin: 0.5rem 0 0; font-size: 0.85rem; color: var(--muted); }
+.review-product strong { color: var(--gold-light); font-weight: 500; }
+/* Not enough room beside the quote (narrow screens) or no hover (touch): show the extras inline under the name. */
+@media (max-width: 1100px), (hover: none) {
+  .review-more { position: static; width: auto; transform: none; opacity: 1; pointer-events: auto; align-items: center; text-align: center; margin-top: 1rem; }
+  .review:hover .review-more, .review:focus .review-more, .review:focus-within .review-more { transform: none; }
+  .review-more .review-photos { display: flex; justify-content: center; }
+  .review-more .review-photos img { width: 76px; height: 76px; aspect-ratio: auto; }
 }
-@media (prefers-reduced-motion: reduce) { .rv-track { scroll-behavior: auto; } .rv-card:hover { transform: none; } }
+
+.review-nav { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 1.2rem; }
+.review-arrow { background: none; border: 0; cursor: pointer; color: var(--gold); font-size: 1.8rem; line-height: 1; padding: 0.2rem 0.6rem; }
+.review-arrow:hover { color: var(--gold-light); }
+.review-dots { display: flex; gap: 0.2rem; }
+.review-dots button { width: 22px; height: 22px; padding: 0; border: 0; background: none; cursor: pointer; display: grid; place-items: center; }
+.review-dots button::before { content: ''; width: 8px; height: 8px; border-radius: 50%; border: 1px solid var(--gold); transition: background 0.3s; }
+.review-dots button.on::before { background: var(--gold); }
+.review-share { margin: 2.2rem 0 0; font-size: 0.9rem; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .review { animation: none; } .review-more, .review-photos img { transition: none; } }
 .stars { display: flex; gap: 0.2rem; }
 .stars button { background: none; border: 0; padding: 0 0.1rem; cursor: pointer; font-size: 1.7rem; line-height: 1; color: var(--border); transition: color 0.2s, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); }
 .stars button.on { color: var(--gold); }
@@ -1402,8 +1396,11 @@ select {
 .addr-actions { display: flex; flex-wrap: wrap; gap: 0.4rem 1.1rem; margin-top: auto; padding-top: 0.8rem; border-top: 1px solid var(--border); }
 .addr-actions .link-btn { font-size: 0.74rem; }
 .link-btn.addr-danger { color: var(--red); }
-.addr-empty { text-align: center; padding: 2rem 1.3rem; }
-.addr-empty p { margin: 0; }
+.addr-empty { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; text-align: center; padding: 2.2rem 1.3rem; border: 1px dashed var(--gold); margin-bottom: 0; }
+.addr-empty h3 { margin: 0.3rem 0 0; font-size: 1.15rem; }
+.addr-empty p { margin: 0; max-width: 32rem; text-wrap: balance; }
+.addr-empty .btn { margin-top: 0.8rem; }
+.addr-empty-icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: var(--surface-2); color: var(--gold); }
 .acct-form + .btn-row, .addr-grid + .btn-row, .addr-empty + .btn-row { margin-top: 1.2rem; }
 @media (max-width: 760px) {
   .addr-grid { grid-template-columns: 1fr; }

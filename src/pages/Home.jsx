@@ -40,7 +40,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="container section">
+      <section className="container section section-flush">
         <Reveal className="section-head">
           <div>
             <p className="eyebrow">Find your favourite</p>
