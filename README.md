@@ -65,3 +65,15 @@ Ask the project owner for the URL and anon key. Reading products needs nothing m
 The build output is static, so any static host works. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in the host's environment settings (for Netlify: Site settings → Environment variables), then redeploy. Vite reads them at build time.
 
 [`public/_redirects`](public/_redirects) rewrites all routes to `index.html` so client-side routing works on hosts that support this format (for example Netlify or Cloudflare Pages).
+
+## Customer accounts
+
+Customers can create an account at `/account` with an email, a username and a password (phone is optional and only stored). They can sign in with either their email or their username, and keep a profile with a saved delivery address that pre-fills the bag. Ordering still works for guests.
+
+Setup (after the first migration):
+1. Edit `admin_email` at the top of [`supabase/migrations/0002_profiles_and_admins.sql`](supabase/migrations/0002_profiles_and_admins.sql) and run it in the SQL Editor. It limits product and image writes to the `admins` table and adds the `profiles` table. **Run it before turning sign-ups on**, or every customer account could edit products.
+2. Supabase → Authentication → Sign In / Providers → Email: turn **Allow new users to sign up** on.
+3. Authentication → URL Configuration: set Site URL to your live site, so confirmation links point to it.
+4. Emails: Supabase's built-in sender allows only a handful of emails per hour. Before launch, add a custom SMTP provider (Authentication → Emails → SMTP settings), or turn off **Confirm email**.
+
+To add another admin, insert their user id into `public.admins`.

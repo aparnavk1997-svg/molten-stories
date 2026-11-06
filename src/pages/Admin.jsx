@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import ProductImage, { getImages } from '../components/ProductImage';
 import { categories, categoriesOf } from '../data/products';
 import { useProducts } from '../context/ProductsContext';
 import { formatINR } from '../utils/pricing';
-import { supabase, supabaseEnabled } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
 
 const CATEGORY_OPTIONS = categories.filter((c) => c !== 'All');
 const MAX_IMAGE_SIDE = 900;
@@ -43,6 +44,7 @@ async function uploadImage(file) {
 }
 
 function Login() {
+  const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -52,8 +54,11 @@ function Login() {
     e.preventDefault();
     setBusy(true);
     setError('');
-    const { error: err } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-    if (err) setError('Incorrect email or password.');
+    try {
+      await signIn(email, password);
+    } catch (err) {
+      setError(err.message);
+    }
     setBusy(false);
   };
 
@@ -87,19 +92,12 @@ export default function Admin() {
   const {
     allProducts: products, loadError, addProduct, updateProduct, setProductEnabled, deleteProduct,
   } = useProducts();
-  const [session, setSession] = useState(undefined); // undefined = still checking
+  const { enabled: supabaseEnabled, loading: authLoading, session, isAdmin, signOut } = useAuth();
   const [busy, setBusy] = useState(false);
   const [editingId, setEditingId] = useState(null); // null = adding a new product
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const [notice, setNotice] = useState('');
-
-  useEffect(() => {
-    if (!supabaseEnabled) return undefined;
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data } = supabase.auth.onAuthStateChange((_event, next) => setSession(next));
-    return () => data.subscription.unsubscribe();
-  }, []);
 
   if (!supabaseEnabled) {
     return (
@@ -112,8 +110,21 @@ export default function Admin() {
       </div>
     );
   }
-  if (session === undefined) return <div className="container page"><p className="muted">Loading…</p></div>;
+  if (authLoading) return <div className="container page"><p className="muted">Loading…</p></div>;
   if (!session) return <Login />;
+  if (!isAdmin) {
+    return (
+      <div className="container page narrow">
+        <p className="eyebrow">Admin</p>
+        <h1>No admin access</h1>
+        <p className="muted">This account isn't an admin. Sign out and use the admin login to manage products.</p>
+        <div className="btn-row">
+          <button className="btn" onClick={signOut}>Sign out</button>
+          <Link className="btn btn-outline" to="/account">My account</Link>
+        </div>
+      </div>
+    );
+  }
 
   // Run a database action and show a message on failure instead of failing silently.
   const run = async (action, okMessage) => {
@@ -231,8 +242,6 @@ export default function Admin() {
     const ok = await run(() => deleteProduct(p.id), `Deleted "${p.name}".`);
     if (ok && editingId === p.id) reset();
   };
-
-  const signOut = () => supabase.auth.signOut();
 
   return (
     <div className="container page">

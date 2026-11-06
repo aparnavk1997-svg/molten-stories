@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
+import { useAuth } from '../context/AuthContext';
 import ThemeToggle from './ThemeToggle';
 
 export default function Header() {
   const { count } = useCart();
   const { count: savedCount } = useWishlist();
+  const { profile } = useAuth();
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
 
@@ -29,6 +31,9 @@ export default function Header() {
           >
             Favourites
             {savedCount > 0 && <span className="badge">{savedCount}</span>}
+          </NavLink>
+          <NavLink to="/account" onClick={close}>
+            {profile?.username ? `@${profile.username}` : 'Account'}
           </NavLink>
           <NavLink
             to="/bag"
