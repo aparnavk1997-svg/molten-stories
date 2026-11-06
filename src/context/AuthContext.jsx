@@ -31,12 +31,19 @@ const normaliseAddress = (r) => ({
 /** Oldest first. */
 const sortAddresses = (rows) => [...rows].sort((a, b) => a.created_at.localeCompare(b.created_at));
 
+// A password-reset link opens the site with "type=recovery" in the address. Supabase clears that from the address bar
+// as soon as it reads it, so note it here, at load time. An expired or reused link arrives with an error code instead.
+const hashParams = typeof window === 'undefined' ? new URLSearchParams() : new URLSearchParams(window.location.hash.slice(1));
+const OPENED_FROM_RESET_LINK = hashParams.get('type') === 'recovery';
+const RESET_LINK_FAILED = Boolean(hashParams.get('error_code') || hashParams.get('error_description'));
+
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const [addresses, setAddresses] = useState([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(supabaseEnabled);
+  const [recovering, setRecovering] = useState(OPENED_FROM_RESET_LINK);  // opened from a reset email: ask for a new password
 
   const userId = session?.user?.id;
 
@@ -47,7 +54,9 @@ export function AuthProvider({ children }) {
       setSession(data.session);
       if (!data.session) setLoading(false);
     });
-    const { data } = supabase.auth.onAuthStateChange((_event, next) => {
+    const { data } = supabase.auth.onAuthStateChange((event, next) => {
+      if (event === 'PASSWORD_RECOVERY') setRecovering(true);
+      if (event === 'SIGNED_OUT') setRecovering(false);
       setSession(next);
       if (!next) {
         setProfile(null);
@@ -127,6 +136,26 @@ export function AuthProvider({ children }) {
   }, []);
 
   const signOut = useCallback(() => supabase.auth.signOut(), []);
+
+  /** Emails a reset link. Says nothing about whether the address has an account, so it can't be used to look people up. */
+  const requestPasswordReset = useCallback(async (email) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/account`,
+    });
+    if (error) {
+      if (error.status === 429 || /rate limit/i.test(error.message)) {
+        throw new Error('Too many reset emails have been requested. Please wait a few minutes and try again.');
+      }
+      throw new Error('We could not send the reset email. Please try again.');
+    }
+  }, []);
+
+  /** Sets a new password for the signed-in (or reset-link) user. */
+  const updatePassword = useCallback(async (password) => {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) throw new Error(error.message);
+    setRecovering(false);
+  }, []);
 
   const saveProfile = useCallback(
     async (fields) => {
@@ -222,11 +251,15 @@ export function AuthProvider({ children }) {
       signUp,
       signIn,
       signOut,
+      recovering,
+      resetLinkFailed: RESET_LINK_FAILED,
+      requestPasswordReset,
+      updatePassword,
       saveProfile,
       saveAddress,
       deleteAddress,
     }),
-    [loading, session, profile, primaryAddress, addresses, isAdmin, usernameAvailable, signUp, signIn, signOut, saveProfile, saveAddress, deleteAddress]
+    [loading, session, profile, primaryAddress, addresses, isAdmin, usernameAvailable, signUp, signIn, signOut, recovering, requestPasswordReset, updatePassword, saveProfile, saveAddress, deleteAddress]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

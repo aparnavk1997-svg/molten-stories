@@ -65,7 +65,7 @@ function useFieldErrors(values, validate) {
 
 const focusField = (id) => document.getElementById(id)?.focus();
 
-function SignInForm() {
+function SignInForm({ onForgot }) {
   const { signIn } = useAuth();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -118,11 +118,109 @@ function SignInForm() {
         autoComplete="current-password"
         error={shown('password')}
       />
+      <button type="button" className="link-btn" onClick={onForgot}>Forgot password?</button>
       {error && <span className="error" role="alert">{error}</span>}
       <button className="btn btn-block" type="submit" disabled={busy}>
         {busy ? 'Signing in…' : 'Sign in'}
       </button>
     </form>
+  );
+}
+
+function ForgotPasswordForm({ onBack }) {
+  const { requestPasswordReset, resetLinkFailed } = useAuth();
+  const [email, setEmail] = useState('');
+  const [error, setError] = useState('');
+  const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setError('');
+    if (!EMAIL_RE.test(email.trim())) return setError('Enter the email address you signed up with.');
+    setBusy(true);
+    try {
+      await requestPasswordReset(email);
+      setSent(true);
+    } catch (err) {
+      setError(err.message);
+    }
+    setBusy(false);
+  };
+
+  if (sent) {
+    return (
+      <div className="form">
+        <p className="admin-notice" role="status">
+          If there is an account for {email.trim()}, we have emailed a link to reset the password. It can take a minute, and it may land in spam.
+        </p>
+        <button type="button" className="link-btn" onClick={onBack}>Back to sign in</button>
+      </div>
+    );
+  }
+
+  return (
+    <form className="form" onSubmit={submit} noValidate>
+      {resetLinkFailed && (
+        <p className="error" role="alert">That reset link has expired or was already used. Enter your email to get a new one.</p>
+      )}
+      <p className="muted small">Enter your email and we will send you a link to choose a new password. Usernames cannot be used here.</p>
+      <Field id="fp-email" label="Email" required>
+        <input
+          id="fp-email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          autoComplete="email"
+          autoFocus
+          aria-required="true"
+        />
+      </Field>
+      {error && <span className="error" role="alert">{error}</span>}
+      <button className="btn btn-block" type="submit" disabled={busy}>{busy ? 'Sending…' : 'Send reset link'}</button>
+      <button type="button" className="link-btn" onClick={onBack}>Back to sign in</button>
+    </form>
+  );
+}
+
+function ResetPasswordForm() {
+  const { updatePassword, signOut } = useAuth();
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setError('');
+    if (password.length < 8) return setError('Use at least 8 characters.');
+    if (password !== confirm) return setError('The two passwords do not match.');
+    setBusy(true);
+    try {
+      await updatePassword(password);   // afterwards they are simply signed in
+    } catch (err) {
+      setError(err.message);
+    }
+    setBusy(false);
+  };
+
+  return (
+    <div className="container page auth-page">
+      <div className="auth-card">
+        <div className="auth-main">
+          <h1 className="auth-title">Choose a new password</h1>
+          <form className="form" onSubmit={submit} noValidate>
+            <PasswordField id="rp-password" label="New password (at least 8 characters)" value={password}
+              onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" />
+            <PasswordField id="rp-confirm" label="Confirm new password" value={confirm}
+              onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" />
+            {error && <span className="error" role="alert">{error}</span>}
+            <button className="btn btn-block" type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save new password'}</button>
+            <button type="button" className="link-btn" onClick={signOut}>Cancel</button>
+          </form>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -723,8 +821,8 @@ function ProfileForm() {
 }
 
 export default function Account() {
-  const { enabled, loading, session } = useAuth();
-  const [tab, setTab] = useState('signin');
+  const { enabled, loading, session, recovering, resetLinkFailed } = useAuth();
+  const [tab, setTab] = useState(resetLinkFailed ? 'forgot' : 'signin');
 
   if (!enabled) {
     return (
@@ -736,6 +834,8 @@ export default function Account() {
   }
   if (loading) return <div className="container page"><p className="muted">Loading…</p></div>;
 
+  if (session && recovering) return <ResetPasswordForm />;
+
   if (session) {
     return <div className="container page acct-page"><ProfileForm /></div>;
   }
@@ -745,7 +845,7 @@ export default function Account() {
       <div className="auth-card">
         <aside className="auth-aside">
           <p className="eyebrow">My account</p>
-          <h2>{tab === 'signin' ? 'Welcome back' : 'Join Molten Stories'}</h2>
+          <h2>{tab === 'signup' ? 'Join Molten Stories' : tab === 'forgot' ? 'Locked out?' : 'Welcome back'}</h2>
           <ul className="plain auth-perks">
             <li>Save your delivery details for faster checkout</li>
             <li>See all your orders and their progress in one place</li>
@@ -772,8 +872,10 @@ export default function Account() {
               Create account
             </button>
           </div>
-          <h1 className="auth-title">{tab === 'signin' ? 'Sign in' : 'Create an account'}</h1>
-          {tab === 'signin' ? <SignInForm /> : <SignUpForm />}
+          <h1 className="auth-title">{tab === 'signup' ? 'Create an account' : tab === 'forgot' ? 'Reset your password' : 'Sign in'}</h1>
+          {tab === 'signin' && <SignInForm onForgot={() => setTab('forgot')} />}
+          {tab === 'forgot' && <ForgotPasswordForm onBack={() => setTab('signin')} />}
+          {tab === 'signup' && <SignUpForm />}
           <p className="muted small auth-note">You don't need an account to order. It just saves your details for next time.</p>
         </div>
       </div>

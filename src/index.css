@@ -1842,3 +1842,6 @@ select {
 /* Photos attached to customer reviews */
 .review-photos { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; margin: 0.75rem 0; }
 .review-photos img { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; }
+
+/* Text-style button, e.g. "Forgot password?" */
+.link-btn { background: none; border: 0; padding: 0; margin: 0.25rem 0; font: inherit; font-size: 0.9rem; color: var(--gold-dark, inherit); text-decoration: underline; cursor: pointer; text-align: left; }

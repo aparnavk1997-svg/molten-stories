@@ -1,4 +1,6 @@
-import { Routes, Route, Link } from 'react-router-dom';
+import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useAuth } from './context/AuthContext';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import ScrollToTop from './components/ScrollToTop';
@@ -29,10 +31,22 @@ function NotFound() {
   );
 }
 
+/** A reset-password email may open any page of the site; send the customer to where they can choose the new password. */
+function RecoveryRedirect() {
+  const { session, recovering } = useAuth();
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (session && recovering && pathname !== '/account') navigate('/account', { replace: true });
+  }, [session, recovering, pathname, navigate]);
+  return null;
+}
+
 export default function App() {
   return (
     <>
       <ScrollToTop />
+      <RecoveryRedirect />
       <Header />
       <BagDrawer />
       <main>
