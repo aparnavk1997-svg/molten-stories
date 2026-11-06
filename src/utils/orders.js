@@ -3,7 +3,6 @@ import { formatINR } from './pricing';
 export const ORDER_STATUSES = [
   { value: 'placed', label: 'Placed' },
   { value: 'confirmed', label: 'Confirmed' },
-  { value: 'packed', label: 'Packed' },
   { value: 'shipped', label: 'Shipped' },
   { value: 'delivered', label: 'Delivered' },
   { value: 'cancelled', label: 'Cancelled' },

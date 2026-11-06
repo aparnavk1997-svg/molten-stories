@@ -6,19 +6,59 @@ import { ORDER_STATUSES, formatDateTime, statusLabel } from '../utils/orders';
 
 const STEPS = ORDER_STATUSES.filter((s) => s.value !== 'cancelled');
 
+const STEP_ICONS = {
+  placed: (
+    <>
+      <path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3z" />
+      <path d="M9 8h6M9 12h6" />
+    </>
+  ),
+  confirmed: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M8.2 12.3l2.6 2.6 5-5.4" />
+    </>
+  ),
+  shipped: (
+    <>
+      <path d="M2.5 7h11v9h-11zM13.5 10h4l3 3v3h-7" />
+      <circle cx="7" cy="17.5" r="1.7" />
+      <circle cx="17" cy="17.5" r="1.7" />
+    </>
+  ),
+  delivered: (
+    <>
+      <rect x="4" y="9" width="16" height="11" rx="1" />
+      <path d="M3 9h18v3H3zM12 9v11" />
+      <path d="M12 9c-1-3-4.5-3.5-4.5-1.3C7.5 9 12 9 12 9zM12 9c1-3 4.5-3.5 4.5-1.3C16.5 9 12 9 12 9z" />
+    </>
+  ),
+};
+
 export function OrderProgress({ order }) {
   const reached = new Map((order.status_log || []).map((e) => [e.status, e.at]));
   if (order.status === 'cancelled') {
     return <p className="error">This order was cancelled{reached.get('cancelled') ? ` on ${formatDateTime(reached.get('cancelled'))}` : ''}.</p>;
   }
+  const current = STEPS.findIndex((s) => s.value === order.status);
   return (
-    <ol className="plain">
-      {STEPS.map((s) => (
-        <li key={s.value} className={reached.has(s.value) ? '' : 'muted'}>
-          {reached.has(s.value) ? '✓' : '○'} <strong>{s.label}</strong>
-          {reached.has(s.value) && <span className="muted small"> · {formatDateTime(reached.get(s.value))}</span>}
-        </li>
-      ))}
+    <ol className="steps-track" aria-label="Order progress">
+      {STEPS.map((s, n) => {
+        const done = n <= current || reached.has(s.value);
+        return (
+          <li
+            key={s.value}
+            className={done ? 'reached' : ''}
+            aria-current={n === current ? 'step' : undefined}
+          >
+            <span className="track-dot" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">{STEP_ICONS[s.value]}</svg>
+            </span>
+            <span className="track-label">{s.label}</span>
+            {reached.has(s.value) && <span className="muted small">{formatDateTime(reached.get(s.value))}</span>}
+          </li>
+        );
+      })}
     </ol>
   );
 }

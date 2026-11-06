@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { supabase, supabaseEnabled } from '../lib/supabase';
+import { isAddressValid } from '../utils/pricing';
 
 const AuthContext = createContext(null);
 
@@ -16,9 +17,24 @@ const normaliseProfile = (r) => ({
   pin: r.pin || '',
 });
 
+const normaliseAddress = (r) => ({
+  id: r.id,
+  label: r.label || '',
+  name: r.full_name,
+  phone: r.phone,
+  street: r.street,
+  city: r.city,
+  state: r.state,
+  pin: r.pin,
+});
+
+/** Oldest first. */
+const sortAddresses = (rows) => [...rows].sort((a, b) => a.created_at.localeCompare(b.created_at));
+
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
+  const [addresses, setAddresses] = useState([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(supabaseEnabled);
 
@@ -35,6 +51,7 @@ export function AuthProvider({ children }) {
       setSession(next);
       if (!next) {
         setProfile(null);
+        setAddresses([]);
         setIsAdmin(false);
         setLoading(false);
       }
@@ -50,9 +67,11 @@ export function AuthProvider({ children }) {
     Promise.all([
       supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
       supabase.rpc('is_admin'),
-    ]).then(([prof, admin]) => {
+      supabase.from('addresses').select('*').eq('user_id', userId),
+    ]).then(([prof, admin, addr]) => {
       if (cancelled) return;
       setProfile(prof.data ? normaliseProfile(prof.data) : null);
+      setAddresses(sortAddresses(addr.data || []).map(normaliseAddress));
       setIsAdmin(admin.data === true);
       setLoading(false);
     });
@@ -127,6 +146,61 @@ export function AuthProvider({ children }) {
     [userId, profile, usernameAvailable]
   );
 
+  const reloadAddresses = useCallback(async () => {
+    const { data, error } = await supabase.from('addresses').select('*').eq('user_id', userId);
+    if (error) throw new Error(error.message);
+    setAddresses(sortAddresses(data || []).map(normaliseAddress));
+  }, [userId]);
+
+  /** Adds an extra address, or updates it when `id` is given. */
+  const saveAddress = useCallback(
+    async (fields, id) => {
+      const row = {
+        label: fields.label.trim(),
+        full_name: fields.name.trim(),
+        phone: fields.phone.trim(),
+        street: fields.street.trim(),
+        city: fields.city.trim(),
+        state: fields.state.trim(),
+        pin: fields.pin.trim(),
+      };
+      if (id) {
+        const { error } = await supabase.from('addresses').update(row).eq('id', id);
+        if (error) throw new Error(error.message);
+      } else {
+        const { error } = await supabase.from('addresses').insert({ ...row, user_id: userId });
+        if (error) throw new Error(error.message);
+      }
+      await reloadAddresses();
+    },
+    [userId, reloadAddresses]
+  );
+
+  const deleteAddress = useCallback(
+    async (id) => {
+      const { error } = await supabase.from('addresses').delete().eq('id', id);
+      if (error) throw new Error(error.message);
+      await reloadAddresses();
+    },
+    [reloadAddresses]
+  );
+
+  /** The primary shipping address lives on the profile; null until it is complete. */
+  const primaryAddress = useMemo(() => {
+    if (!profile) return null;
+    const a = {
+      id: 'primary',
+      label: 'Primary',
+      name: profile.fullName,
+      phone: profile.phone,
+      street: profile.street,
+      city: profile.city,
+      state: profile.state,
+      pin: profile.pin,
+    };
+    return isAddressValid(a) ? a : null;
+  }, [profile]);
+
   const value = useMemo(
     () => ({
       enabled: supabaseEnabled,
@@ -134,14 +208,18 @@ export function AuthProvider({ children }) {
       session,
       user: session?.user ?? null,
       profile,
+      primaryAddress,
+      addresses,
       isAdmin,
       usernameAvailable,
       signUp,
       signIn,
       signOut,
       saveProfile,
+      saveAddress,
+      deleteAddress,
     }),
-    [loading, session, profile, isAdmin, usernameAvailable, signUp, signIn, signOut, saveProfile]
+    [loading, session, profile, primaryAddress, addresses, isAdmin, usernameAvailable, signUp, signIn, signOut, saveProfile, saveAddress, deleteAddress]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
