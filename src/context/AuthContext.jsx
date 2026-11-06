@@ -99,7 +99,14 @@ export function AuthProvider({ children }) {
         options: { data: { username: uname, full_name: fullName.trim(), phone: phone.trim() } },
       });
       if (error) throw new Error(error.message);
-      // No session means Supabase is waiting for the customer to confirm their email address.
+      // No session means Supabase is waiting for the customer to confirm their email address
+      // (Supabase sends its own email then). Otherwise they're signed in, so send the "account created" email.
+      if (data.session) {
+        fetch('/.netlify/functions/welcome-email', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${data.session.access_token}` },
+        }).catch(() => {}); // best effort: a failed email must never block sign-up
+      }
       return { needsConfirmation: !data.session };
     },
     [usernameAvailable]
