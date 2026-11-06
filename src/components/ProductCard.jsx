@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import ProductImage from './ProductImage';
 import QuickView from './QuickView';
 import HeartButton from './HeartButton';
+import { AdminEditLink } from './AdminLinks';
 import { useReveal } from './Reveal';
 import { PriceTag } from './PriceBits';
 import { useCart } from '../context/CartContext';
@@ -50,6 +51,7 @@ export default function ProductCard({ product }) {
           <span className="quick-btn-text">Quick look</span>
         </button>
         <HeartButton product={product} className="card-heart" />
+        <AdminEditLink product={product} />
       </div>
       {quickOpen && <QuickView product={product} onClose={() => setQuickOpen(false)} />}
       <div className="card-body">

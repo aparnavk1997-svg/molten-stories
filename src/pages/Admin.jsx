@@ -1,55 +1,24 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import ProductImage, { getImages } from '../components/ProductImage';
+import ImageFitDialog from '../components/ImageFitDialog';
 import { categories, categoriesOf } from '../data/products';
 import { useProducts } from '../context/ProductsContext';
+import { useAdmin } from '../context/AdminContext';
+import { fileToSource } from '../utils/imageFit';
 import { formatINR } from '../utils/pricing';
 
-// Client-side gate only: this keeps casual visitors out but is NOT real security.
-// Override at build time with VITE_ADMIN_PASSCODE.
-const PASSCODE = import.meta.env.VITE_ADMIN_PASSCODE || 'molten-admin';
-const AUTH_KEY = 'molten-stories-admin';
 const CATEGORY_OPTIONS = categories.filter((c) => c !== 'All');
-const MAX_IMAGE_SIDE = 900;
 const EMPTY = { name: '', categories: [CATEGORY_OPTIONS[0]], price: '', old: '', color: '#c9a95c', desc: '', images: [] };
 
-/** Downscale an uploaded image to a JPEG data URL so it fits in browser storage. */
-function readImage(file) {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      const scale = Math.min(1, MAX_IMAGE_SIDE / Math.max(img.width, img.height));
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.round(img.width * scale);
-      canvas.height = Math.round(img.height * scale);
-      const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL('image/jpeg', 0.82));
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error('That file could not be read as an image.'));
-    };
-    img.src = url;
-  });
-}
-
-function Login({ onSuccess }) {
+function Login() {
+  const { signIn } = useAdmin();
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
 
   const submit = (e) => {
     e.preventDefault();
-    if (code === PASSCODE) {
-      sessionStorage.setItem(AUTH_KEY, '1');
-      onSuccess();
-    } else {
-      setError('Incorrect passcode.');
-    }
+    if (!signIn(code)) setError('Incorrect passcode.');
   };
 
   return (
@@ -78,13 +47,26 @@ export default function Admin() {
   const {
     allProducts: products, saveError, addProduct, updateProduct, setProductEnabled, deleteProduct, resetProducts,
   } = useProducts();
-  const [authed, setAuthed] = useState(() => sessionStorage.getItem(AUTH_KEY) === '1');
+  const { isAdmin: authed, signOut } = useAdmin();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [editingId, setEditingId] = useState(null); // null = adding a new product
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const [notice, setNotice] = useState('');
+  // Photos waiting to be fitted to the frame: { src, replaceIndex } (replaceIndex null = add as new).
+  const [fitQueue, setFitQueue] = useState([]);
 
-  if (!authed) return <Login onSuccess={() => setAuthed(true)} />;
+  // Arriving from a product image's edit button (/admin?edit=ID): open that product in the form.
+  const editParam = searchParams.get('edit');
+  useEffect(() => {
+    if (!authed || !editParam) return;
+    const target = products.find((p) => p.id === Number(editParam));
+    if (target) startEdit(target);
+    setSearchParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authed, editParam]);
+
+  if (!authed) return <Login />;
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
@@ -94,7 +76,8 @@ export default function Admin() {
       categories: f.categories.includes(c) ? f.categories.filter((x) => x !== c) : [...f.categories, c],
     }));
 
-  const startEdit = (p) => {
+  // A function declaration so the effect above can call it (it is hoisted).
+  function startEdit(p) {
     setEditingId(p.id);
     setForm({
       name: p.name, categories: categoriesOf(p), price: String(p.price), old: p.old ? String(p.old) : '',
@@ -103,7 +86,7 @@ export default function Admin() {
     setErrors({});
     setNotice('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  }
 
   const reset = () => {
     setEditingId(null);
@@ -117,21 +100,35 @@ export default function Admin() {
     if (!files.length) return;
     const bad = files.filter((f) => !f.type.startsWith('image/'));
     const good = files.filter((f) => f.type.startsWith('image/'));
-    const added = [];
+    const queued = [];
     let failed = bad.length;
     for (const file of good) {
       try {
-        added.push(await readImage(file));
+        queued.push({ src: await fileToSource(file), replaceIndex: null });
       } catch {
         failed += 1;
       }
     }
-    if (added.length) setForm((f) => ({ ...f, images: [...f.images, ...added] }));
+    if (queued.length) setFitQueue((q) => [...q, ...queued]);
     setErrors((x) => ({
       ...x,
       image: failed ? `${failed} file${failed === 1 ? ' was' : 's were'} skipped: not a readable image.` : undefined,
     }));
   };
+
+  const applyFit = (dataUrl) => {
+    const { replaceIndex } = fitQueue[0];
+    setForm((f) => ({
+      ...f,
+      images:
+        replaceIndex == null
+          ? [...f.images, dataUrl]
+          : f.images.map((img, n) => (n === replaceIndex ? dataUrl : img)),
+    }));
+    setFitQueue((q) => q.slice(1));
+  };
+
+  const adjustImage = (i) => setFitQueue((q) => [...q, { src: form.images[i], replaceIndex: i }]);
 
   const removeImage = (i) =>
     setForm((f) => ({ ...f, images: f.images.filter((_, n) => n !== i) }));
@@ -189,11 +186,6 @@ export default function Admin() {
     resetProducts();
     reset();
     setNotice('Restored the original catalogue.');
-  };
-
-  const signOut = () => {
-    sessionStorage.removeItem(AUTH_KEY);
-    setAuthed(false);
   };
 
   return (
@@ -260,6 +252,9 @@ export default function Admin() {
           <label className="field">
             Photos (you can pick several)
             <input type="file" accept="image/*" multiple onChange={onFiles} />
+            <span className="muted small">
+              Photos are shown at a 4:5 ratio everywhere. You can adjust how each one fits after choosing it.
+            </span>
             {errors.image && <span className="error">{errors.image}</span>}
           </label>
           {form.images.length > 0 && (
@@ -272,6 +267,7 @@ export default function Admin() {
                   ) : (
                     <button type="button" onClick={() => makeMain(i)}>Make main</button>
                   )}
+                  <button type="button" onClick={() => adjustImage(i)} aria-label={`Adjust photo ${i + 1}`}>Adjust</button>
                   <button type="button" onClick={() => removeImage(i)} aria-label={`Remove photo ${i + 1}`}>Remove</button>
                 </li>
               ))}
@@ -340,6 +336,14 @@ export default function Admin() {
           </div>
         </div>
       </div>
+      {fitQueue.length > 0 && (
+        <ImageFitDialog
+          key={fitQueue.length + fitQueue[0].src.slice(-30)}
+          src={fitQueue[0].src}
+          onApply={applyFit}
+          onCancel={() => setFitQueue((q) => q.slice(1))}
+        />
+      )}
     </div>
   );
 }
