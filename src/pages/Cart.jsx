@@ -6,6 +6,7 @@ import GiftOptions from '../components/GiftOptions';
 import ConfirmDialog from '../components/ConfirmDialog';
 import FreeDeliveryBar from '../components/FreeDeliveryBar';
 import DeliveryChecker from '../components/DeliveryChecker';
+import RecentlyViewed from '../components/RecentlyViewed';
 import DeliveryAddress from '../components/DeliveryAddress';
 import { PriceTag } from '../components/PriceBits';
 import { useCart } from '../context/CartContext';
@@ -64,6 +65,7 @@ export default function Cart() {
           <Link to="/shop" className="btn">Shop candles</Link>
           <Link to="/gift-box" className="btn btn-outline">Build a gift box</Link>
         </div>
+        <RecentlyViewed />
       </div>
     );
   }
@@ -240,6 +242,7 @@ export default function Cart() {
           )}
         </aside>
       </div>
+      <RecentlyViewed excludeIds={items.map((i) => i.id)} />
       {confirmClear && (
         <ConfirmDialog
           title="Clear your bag?"

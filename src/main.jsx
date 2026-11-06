@@ -6,6 +6,7 @@ import { AdminProvider } from './context/AdminContext';
 import { CartProvider } from './context/CartContext';
 import { ProductsProvider } from './context/ProductsContext';
 import { WishlistProvider } from './context/WishlistContext';
+import { RecentlyViewedProvider } from './context/RecentlyViewedContext';
 import { ThemeProvider } from './context/ThemeContext';
 import './index.css';
 
@@ -16,9 +17,11 @@ createRoot(document.getElementById('root')).render(
         <AdminProvider>
           <ProductsProvider>
             <WishlistProvider>
-              <CartProvider>
-                <App />
-              </CartProvider>
+              <RecentlyViewedProvider>
+                <CartProvider>
+                  <App />
+                </CartProvider>
+              </RecentlyViewedProvider>
             </WishlistProvider>
           </ProductsProvider>
         </AdminProvider>
