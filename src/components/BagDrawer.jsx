@@ -1,8 +1,9 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import ProductImage from './ProductImage';
 import { EmptyBagIllustration } from './EmptyIllustrations';
 import GiftOptions from './GiftOptions';
+import ConfirmDialog from './ConfirmDialog';
 import FreeDeliveryBar from './FreeDeliveryBar';
 import DeliveryChecker from './DeliveryChecker';
 import { useCart } from '../context/CartContext';
@@ -31,11 +32,13 @@ export default function BagDrawer() {
     remove,
     removeHamper,
     placeOrder,
+    clear,
   } = useCart();
 
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const closeRef = useRef(null);
+  const [confirmClear, setConfirmClear] = useState(false);
   const addressValid = isAddressValid(address);
   const isEmpty = items.length === 0 && hampers.length === 0;
 
@@ -46,6 +49,11 @@ export default function BagDrawer() {
       return;
     }
     placeOrder(items, giftOptions);
+  };
+
+  const handleClear = () => {
+    clear();
+    setConfirmClear(false);
   };
 
   // Close on navigation
@@ -221,7 +229,17 @@ export default function BagDrawer() {
             </button>
             <Link to="/bag" className="btn btn-outline btn-block" onClick={closeDrawer}>View bag</Link>
             <button className="link-btn drawer-continue" onClick={closeDrawer}>Continue shopping</button>
+            <button className="link-btn drawer-continue" onClick={() => setConfirmClear(true)}>Clear bag</button>
           </div>
+        )}
+        {confirmClear && (
+          <ConfirmDialog
+            title="Clear your bag?"
+            message="This removes all candles and gift boxes from your bag."
+            confirmLabel="Clear bag"
+            onConfirm={handleClear}
+            onCancel={() => setConfirmClear(false)}
+          />
         )}
       </aside>
     </>

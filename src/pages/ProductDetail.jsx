@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import ProductGallery from '../components/ProductGallery';
 import ProductCard from '../components/ProductCard';
 import { PriceTag } from '../components/PriceBits';
 import HeartButton from '../components/HeartButton';
+import RecentlyViewed from '../components/RecentlyViewed';
 import { useProducts } from '../context/ProductsContext';
+import { useRecentlyViewed } from '../context/RecentlyViewedContext';
 import { useCart } from '../context/CartContext';
 import { placeOrderOnWhatsApp, productCode } from '../utils/whatsapp';
 import { isAddressValid } from '../utils/pricing';
@@ -16,7 +18,13 @@ export default function ProductDetail() {
   const { products, getProduct, loading } = useProducts();
   const product = getProduct(id);
   const { add, address, placeOrder } = useCart();
+  const { record } = useRecentlyViewed();
   const [copied, setCopied] = useState(false);
+  const productId = product?.id;
+
+  useEffect(() => {
+    if (productId !== undefined) record(productId);
+  }, [productId, record]);
 
   const share = async () => {
     const url = window.location.href;
@@ -141,6 +149,8 @@ export default function ProductDetail() {
           </div>
         </section>
       )}
+
+      <RecentlyViewed excludeIds={[product.id]} />
     </div>
   );
 }

@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom';
 import ProductImage from '../components/ProductImage';
 import { EmptyBagIllustration } from '../components/EmptyIllustrations';
 import GiftOptions from '../components/GiftOptions';
+import ConfirmDialog from '../components/ConfirmDialog';
 import FreeDeliveryBar from '../components/FreeDeliveryBar';
 import DeliveryChecker from '../components/DeliveryChecker';
+import RecentlyViewed from '../components/RecentlyViewed';
 import DeliveryAddress from '../components/DeliveryAddress';
 import { PriceTag } from '../components/PriceBits';
 import { useCart } from '../context/CartContext';
@@ -29,9 +31,11 @@ export default function Cart() {
     removeHamper,
     unpackHamper,
     placeOrder,
+    clear,
   } = useCart();
 
   const [attempted, setAttempted] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
   const addressValid = isAddressValid(address);
   const isEmpty = items.length === 0 && hampers.length === 0;
 
@@ -46,6 +50,11 @@ export default function Cart() {
     placeOrder(items, giftOptions);
   };
 
+  const handleClear = () => {
+    clear();
+    setConfirmClear(false);
+  };
+
   if (isEmpty) {
     return (
       <div className="container page center-text empty-cart">
@@ -56,6 +65,7 @@ export default function Cart() {
           <Link to="/shop" className="btn">Shop candles</Link>
           <Link to="/gift-box" className="btn btn-outline">Build a gift box</Link>
         </div>
+        <RecentlyViewed />
       </div>
     );
   }
@@ -65,6 +75,10 @@ export default function Cart() {
       <h1 className="h1-small">Your bag</h1>
       <div className="cart-layout">
         <div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.8rem' }}>
+            <button type="button" className="link-btn strong" onClick={() => setConfirmClear(true)}>CLEAR BAG</button>
+          </div>
+
           {/* Custom Gift Box Hampers */}
           {hampers.length > 0 && (
             <div className="hampers-group" style={{ marginBottom: items.length > 0 ? '1.5rem' : '0' }}>
@@ -228,6 +242,16 @@ export default function Cart() {
           )}
         </aside>
       </div>
+      <RecentlyViewed excludeIds={items.map((i) => i.id)} />
+      {confirmClear && (
+        <ConfirmDialog
+          title="Clear your bag?"
+          message="This removes all candles and gift boxes from your bag."
+          confirmLabel="Clear bag"
+          onConfirm={handleClear}
+          onCancel={() => setConfirmClear(false)}
+        />
+      )}
     </div>
   );
 }

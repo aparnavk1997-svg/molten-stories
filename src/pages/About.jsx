@@ -184,7 +184,12 @@ export default function About() {
             <Link to="/contact" className="btn btn-outline">Say hello</Link>
           </div>
         </Reveal>
-        <Reveal as="img" className="about-photo" src="/img/hero.jpeg" alt="A lit candle in a glass jar glowing in warm window light beside dried flowers" />
+        <Reveal
+          as="img"
+          className="about-photo"
+          src="/img/about-hero.jpeg"
+          alt="Hands wicking a candle on a wooden table, surrounded by wax blocks, dried flowers, wicks and a pot of melted wax"
+        />
       </section>
 
       <section className="about-section">

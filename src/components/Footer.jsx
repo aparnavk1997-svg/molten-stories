@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { AdminLink } from './AdminLinks';
 import {
   EMAIL, INSTAGRAM_HANDLE, INSTAGRAM_URL, WHATSAPP_DISPLAY, PHONE_NUMBER, PHONE_DISPLAY, whatsappUrl,
 } from '../utils/whatsapp';
@@ -116,6 +117,7 @@ export default function Footer() {
       </div>
       <div className="footer-bottom">
         © {new Date().getFullYear()} Molten Stories. Made with love.
+        <AdminLink className="admin-link-footer" />
       </div>
     </footer>
   );

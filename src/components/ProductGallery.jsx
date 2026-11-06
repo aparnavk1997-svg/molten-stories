@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import ProductImage, { getImages } from './ProductImage';
+import { AdminEditLink } from './AdminLinks';
 
 const SWIPE_MIN = 40; // px of horizontal travel that counts as a swipe
 
@@ -42,6 +43,7 @@ export default function ProductGallery({ product }) {
   return (
     <div className="gallery">
       <div className="detail-media">
+        <AdminEditLink product={product} />
         <div
           className={`zoom-frame ${hasPhoto ? 'has-photo' : ''} ${zoom ? 'zoomed' : ''}`}
           onPointerMove={hasPhoto ? onMove : undefined}

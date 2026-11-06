@@ -20,7 +20,7 @@ export default function Home() {
       <section className="hero">
         <div className="container hero-inner">
           <div className="hero-copy">
-            <p className="eyebrow">Handpoured with love · Made for meaningful moments</p>
+            <p className="eyebrow"><span className="eyebrow-brand">Molten Stories · </span>Handpoured with love · Made for meaningful moments</p>
             <h1>Light up your <em>little moments.</em></h1>
             <p className="lead">
               Premium soy wax candles, thoughtfully crafted to bring a little warmth, beauty and

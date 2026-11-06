@@ -1,38 +1,20 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import ProductImage, { getImages } from '../components/ProductImage';
+import ImageFitDialog from '../components/ImageFitDialog';
 import { categories, categoriesOf } from '../data/products';
 import { useProducts } from '../context/ProductsContext';
+import { fileToSource } from '../utils/imageFit';
 import { formatINR } from '../utils/pricing';
-import { supabase, supabaseEnabled } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
 
 const CATEGORY_OPTIONS = categories.filter((c) => c !== 'All');
-const MAX_IMAGE_SIDE = 900;
 const EMPTY = { name: '', categories: [CATEGORY_OPTIONS[0]], price: '', old: '', color: '#c9a95c', desc: '', images: [] };
 
-/** Downscale an image to a JPEG, upload it to Supabase Storage and return its public URL. */
-async function uploadImage(file) {
-  const blob = await new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      const scale = Math.min(1, MAX_IMAGE_SIDE / Math.max(img.width, img.height));
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.round(img.width * scale);
-      canvas.height = Math.round(img.height * scale);
-      const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      URL.revokeObjectURL(url);
-      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not process the image.'))), 'image/jpeg', 0.85);
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error('That file could not be read as an image.'));
-    };
-    img.src = url;
-  });
+/** Upload a fitted photo (JPEG data URL) to Supabase Storage and return its public URL. */
+async function uploadImage(dataUrl) {
+  const blob = await (await fetch(dataUrl)).blob();
   const path = `${crypto.randomUUID()}.jpg`;
   const { error } = await supabase.storage.from('product-images').upload(path, blob, {
     contentType: 'image/jpeg',
@@ -43,6 +25,7 @@ async function uploadImage(file) {
 }
 
 function Login() {
+  const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -52,8 +35,11 @@ function Login() {
     e.preventDefault();
     setBusy(true);
     setError('');
-    const { error: err } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-    if (err) setError('Incorrect email or password.');
+    try {
+      await signIn(email, password);
+    } catch (err) {
+      setError(err.message);
+    }
     setBusy(false);
   };
 
@@ -85,21 +71,27 @@ function Login() {
 
 export default function Admin() {
   const {
-    allProducts: products, loadError, addProduct, updateProduct, setProductEnabled, deleteProduct,
+    allProducts: products, loading: productsLoading, loadError, addProduct, updateProduct, setProductEnabled, deleteProduct,
   } = useProducts();
-  const [session, setSession] = useState(undefined); // undefined = still checking
+  const { enabled: supabaseEnabled, loading: authLoading, session, isAdmin, signOut } = useAuth();
   const [busy, setBusy] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [editingId, setEditingId] = useState(null); // null = adding a new product
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const [notice, setNotice] = useState('');
+  // Photos waiting to be fitted to the frame: { src, replaceIndex } (replaceIndex null = add as new).
+  const [fitQueue, setFitQueue] = useState([]);
 
+  // Arriving from a product image's edit button (/admin?edit=ID): open that product in the form.
+  const editParam = searchParams.get('edit');
   useEffect(() => {
-    if (!supabaseEnabled) return undefined;
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data } = supabase.auth.onAuthStateChange((_event, next) => setSession(next));
-    return () => data.subscription.unsubscribe();
-  }, []);
+    if (!isAdmin || !editParam) return;
+    const target = products.find((p) => p.id === Number(editParam));
+    if (target) startEdit(target);
+    if (target || !productsLoading) setSearchParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, editParam, products, productsLoading]);
 
   if (!supabaseEnabled) {
     return (
@@ -112,8 +104,21 @@ export default function Admin() {
       </div>
     );
   }
-  if (session === undefined) return <div className="container page"><p className="muted">Loading…</p></div>;
+  if (authLoading) return <div className="container page"><p className="muted">Loading…</p></div>;
   if (!session) return <Login />;
+  if (!isAdmin) {
+    return (
+      <div className="container page narrow">
+        <p className="eyebrow">Admin</p>
+        <h1>No admin access</h1>
+        <p className="muted">This account isn't an admin. Sign out and use the admin login to manage products.</p>
+        <div className="btn-row">
+          <button className="btn" onClick={signOut}>Sign out</button>
+          <Link className="btn btn-outline" to="/account">My account</Link>
+        </div>
+      </div>
+    );
+  }
 
   // Run a database action and show a message on failure instead of failing silently.
   const run = async (action, okMessage) => {
@@ -140,7 +145,8 @@ export default function Admin() {
       categories: f.categories.includes(c) ? f.categories.filter((x) => x !== c) : [...f.categories, c],
     }));
 
-  const startEdit = (p) => {
+  // A function declaration so the effect above can call it (it is hoisted).
+  function startEdit(p) {
     setEditingId(p.id);
     setForm({
       name: p.name, categories: categoriesOf(p), price: String(p.price), old: p.old ? String(p.old) : '',
@@ -149,7 +155,7 @@ export default function Admin() {
     setErrors({});
     setNotice('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  }
 
   const reset = () => {
     setEditingId(null);
@@ -163,20 +169,20 @@ export default function Admin() {
     if (!files.length) return;
     const bad = files.filter((f) => !f.type.startsWith('image/'));
     const good = files.filter((f) => f.type.startsWith('image/'));
-    const added = [];
+    const queued = [];
     let failed = bad.length;
     let lastError = '';
     setBusy(true);
     for (const file of good) {
       try {
-        added.push(await uploadImage(file));
+        queued.push({ src: await fileToSource(file), replaceIndex: null });
       } catch (err) {
         failed += 1;
         lastError = err.message || '';
       }
     }
     setBusy(false);
-    if (added.length) setForm((f) => ({ ...f, images: [...f.images, ...added] }));
+    if (queued.length) setFitQueue((q) => [...q, ...queued]);
     setErrors((x) => ({
       ...x,
       image: failed
@@ -184,6 +190,28 @@ export default function Admin() {
         : undefined,
     }));
   };
+
+  const applyFit = async (dataUrl) => {
+    const { replaceIndex } = fitQueue[0];
+    setBusy(true);
+    try {
+      const url = await uploadImage(dataUrl);
+      setForm((f) => ({
+        ...f,
+        images:
+          replaceIndex == null
+            ? [...f.images, url]
+            : f.images.map((img, n) => (n === replaceIndex ? url : img)),
+      }));
+      setErrors((x) => ({ ...x, image: undefined }));
+    } catch (err) {
+      setErrors((x) => ({ ...x, image: `Photo upload failed: ${err.message}` }));
+    }
+    setBusy(false);
+    setFitQueue((q) => q.slice(1));
+  };
+
+  const adjustImage = (i) => setFitQueue((q) => [...q, { src: form.images[i], replaceIndex: i }]);
 
   const removeImage = (i) =>
     setForm((f) => ({ ...f, images: f.images.filter((_, n) => n !== i) }));
@@ -231,8 +259,6 @@ export default function Admin() {
     const ok = await run(() => deleteProduct(p.id), `Deleted "${p.name}".`);
     if (ok && editingId === p.id) reset();
   };
-
-  const signOut = () => supabase.auth.signOut();
 
   return (
     <div className="container page">
@@ -296,6 +322,9 @@ export default function Admin() {
           <label className="field">
             Photos (you can pick several)
             <input type="file" accept="image/*" multiple onChange={onFiles} disabled={busy} />
+            <span className="muted small">
+              Photos are shown at a 4:5 ratio everywhere. You can adjust how each one fits after choosing it.
+            </span>
             {errors.image && <span className="error">{errors.image}</span>}
           </label>
           {form.images.length > 0 && (
@@ -308,6 +337,7 @@ export default function Admin() {
                   ) : (
                     <button type="button" onClick={() => makeMain(i)}>Make main</button>
                   )}
+                  <button type="button" onClick={() => adjustImage(i)} aria-label={`Adjust photo ${i + 1}`}>Adjust</button>
                   <button type="button" onClick={() => removeImage(i)} aria-label={`Remove photo ${i + 1}`}>Remove</button>
                 </li>
               ))}
@@ -376,6 +406,14 @@ export default function Admin() {
           </ul>
         </div>
       </div>
+      {fitQueue.length > 0 && (
+        <ImageFitDialog
+          key={fitQueue.length + fitQueue[0].src.slice(-30)}
+          src={fitQueue[0].src}
+          onApply={applyFit}
+          onCancel={() => setFitQueue((q) => q.slice(1))}
+        />
+      )}
     </div>
   );
 }

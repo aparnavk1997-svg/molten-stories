@@ -5,20 +5,28 @@ import App from './App';
 import { CartProvider } from './context/CartContext';
 import { ProductsProvider } from './context/ProductsContext';
 import { WishlistProvider } from './context/WishlistContext';
+import { RecentlyViewedProvider } from './context/RecentlyViewedContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { AuthProvider } from './context/AuthContext';
+import ProfileAddressSync from './components/ProfileAddressSync';
 import './index.css';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
       <ThemeProvider>
-        <ProductsProvider>
-          <WishlistProvider>
-            <CartProvider>
-              <App />
-            </CartProvider>
-          </WishlistProvider>
-        </ProductsProvider>
+        <AuthProvider>
+          <ProductsProvider>
+            <WishlistProvider>
+              <RecentlyViewedProvider>
+                <CartProvider>
+                  <ProfileAddressSync />
+                  <App />
+                </CartProvider>
+              </RecentlyViewedProvider>
+            </WishlistProvider>
+          </ProductsProvider>
+        </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>
   </StrictMode>
