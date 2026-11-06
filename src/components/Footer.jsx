@@ -55,6 +55,7 @@ export default function Footer() {
             <li><Link to="/shop">Shop candles</Link></li>
             <li><Link to="/gift-box">Build a gift box</Link></li>
             <li><Link to="/about">Our story</Link></li>
+            <li><Link to="/track">Track your order</Link></li>
             <li><Link to="/review">Write a review</Link></li>
             <li><Link to="/contact">Contact</Link></li>
           </ul>

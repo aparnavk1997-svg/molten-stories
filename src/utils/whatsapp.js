@@ -28,7 +28,7 @@ function deliveryLines(pin, subtotal) {
  * Formats WhatsApp order message with clear distinction between
  * regular individual candles and custom gift box hampers.
  */
-export function orderMessage(orderPayload, legacyGift = {}) {
+export function orderMessage(orderPayload, legacyGift = {}, orderCode = '') {
   const isLegacy = Array.isArray(orderPayload);
   const items = isLegacy ? orderPayload : (orderPayload.items || []);
   const hampers = isLegacy ? (legacyGift.hampers || []) : (orderPayload.hampers || []);
@@ -96,6 +96,7 @@ export function orderMessage(orderPayload, legacyGift = {}) {
 
   return (
     `${intro}\n\n` +
+    (orderCode ? `Order ID: ${orderCode}\n\n` : '') +
     `${bodySections.join('\n\n')}\n\n` +
     del.line +
     `Total: ${formatINR(candlesTotal + wrapFees + del.fee)}\n\n` +
@@ -145,6 +146,6 @@ export function giftBoxMessage(items, note = '', boxPrice = 0) {
 }
 
 /** Opens WhatsApp in a new tab with the order pre-filled. */
-export function placeOrderOnWhatsApp(items, gift) {
-  window.open(whatsappUrl(orderMessage(items, gift)), '_blank', 'noopener');
+export function placeOrderOnWhatsApp(items, gift, orderCode = '') {
+  window.open(whatsappUrl(orderMessage(items, gift, orderCode)), '_blank', 'noopener');
 }
