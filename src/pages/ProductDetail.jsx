@@ -1,16 +1,42 @@
-import { Link, useParams } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import ProductGallery from '../components/ProductGallery';
 import ProductCard from '../components/ProductCard';
 import { PriceTag } from '../components/PriceBits';
+import HeartButton from '../components/HeartButton';
 import { useProducts } from '../context/ProductsContext';
 import { useCart } from '../context/CartContext';
-import { placeOrderOnWhatsApp } from '../utils/whatsapp';
+import { placeOrderOnWhatsApp, productCode } from '../utils/whatsapp';
+import { isAddressValid } from '../utils/pricing';
+import { categoriesOf } from '../data/products';
 
 export default function ProductDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { products, getProduct } = useProducts();
   const product = getProduct(id);
-  const { add } = useCart();
+  const { add, address, placeOrder } = useCart();
+  const [copied, setCopied] = useState(false);
+
+  const share = async () => {
+    const url = window.location.href;
+    const data = { title: product.name, text: `Check out ${product.name} from Molten Stories`, url };
+    if (navigator.share) {
+      try {
+        await navigator.share(data);
+      } catch {
+        /* user dismissed the share sheet */
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      window.prompt('Copy this link', url);
+    }
+  };
 
   if (!product) {
     return (
@@ -22,7 +48,7 @@ export default function ProductDetail() {
   }
 
   const related = products
-    .filter((p) => p.category === product.category && p.id !== product.id)
+    .filter((p) => p.id !== product.id && categoriesOf(p).some((c) => categoriesOf(product).includes(c)))
     .slice(0, 3);
 
   return (
@@ -35,22 +61,63 @@ export default function ProductDetail() {
         <ProductGallery key={product.id} product={product} />
 
         <div>
-          <p className="eyebrow">{product.category}</p>
-          <h1 className="detail-title">{product.name}</h1>
+          <p className="eyebrow">{categoriesOf(product).join(' · ')}</p>
+          <div className="detail-head">
+            <h1 className="detail-title">{product.name}</h1>
+            <HeartButton product={product} className="detail-heart" />
+            <button
+              type="button"
+              className="share-btn"
+              onClick={share}
+              aria-label={`Share ${product.name}`}
+              title="Share"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="20"
+                height="20"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" />
+                <polyline points="16 7 12 3 8 7" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+            </button>
+            <span className="small muted" role="status">{copied ? 'Link copied' : ''}</span>
+          </div>
           <div className="detail-price"><PriceTag product={product} large /></div>
           <p className="lead">{product.desc}</p>
 
           <dl className="specs">
-            <div><dt>Collection</dt><dd>{product.category}</dd></div>
+            <div><dt>Product ID</dt><dd>{productCode(product.id)}</dd></div>
+            <div><dt>Collection</dt><dd>{categoriesOf(product).join(', ')}</dd></div>
+            <div><dt>Wax</dt><dd>Premium soy wax</dd></div>
             <div><dt>Made</dt><dd>Handmade, small-batch</dd></div>
             <div><dt>Ordering</dt><dd>Confirmed on WhatsApp</dd></div>
           </dl>
 
           <div className="detail-cta">
-            <button className="btn btn-cart" onClick={() => add(product.id)}>Add to bag</button>
+            <button
+              className="btn btn-cart"
+              onClick={(e) => add(product.id, e.currentTarget.closest('.detail')?.querySelector('.detail-media img, .detail-media svg'))}
+            >
+              Add to bag
+            </button>
             <button
               className="btn btn-buy"
-              onClick={() => placeOrderOnWhatsApp([{ ...product, qty: 1 }])}
+              onClick={() => {
+                if (isAddressValid(address)) {
+                  placeOrder([{ ...product, qty: 1 }]);
+                } else {
+                  add(product.id);
+                  navigate('/bag');
+                }
+              }}
             >
               Place order
             </button>

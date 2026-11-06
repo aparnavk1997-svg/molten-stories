@@ -1,5 +1,8 @@
 import { Link } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
+import Reveal from '../components/Reveal';
+import Testimonials from '../components/Testimonials';
+import InstagramStrip from '../components/InstagramStrip';
 import { useProducts } from '../context/ProductsContext';
 import { GIFT_ENQUIRY, whatsappUrl } from '../utils/whatsapp';
 
@@ -7,7 +10,7 @@ const collections = [
   { name: 'Floral Collection', category: 'Floral', img: '/img/floral.jpeg', pos: 'center 45%', zoom: 1 },
   { name: 'Decorative Candles', category: 'Decorative', img: '/img/decorative.jpeg', pos: 'center 68%', zoom: 1 },
   { name: 'Everyday Glow', category: 'Everyday', img: '/img/everyday.jpeg', pos: 'center 62%', zoom: 1 },
-  { name: 'Gifting & Hampers', category: 'Gifting', img: '/img/hampers.jpeg', pos: 'center 50%', zoom: 1 },
+  { name: 'Gifting & Hampers', category: 'Gifting', to: '/gift-box', img: '/img/hampers.jpeg', pos: 'center 50%', zoom: 1 },
 ];
 
 export default function Home() {
@@ -20,8 +23,8 @@ export default function Home() {
             <p className="eyebrow">Handpoured with love · Made for meaningful moments</p>
             <h1>Light up your <em>little moments.</em></h1>
             <p className="lead">
-              Thoughtfully crafted candles that bring a little warmth, beauty and magic into your
-              everyday moments.
+              Premium soy wax candles, thoughtfully crafted to bring a little warmth, beauty and
+              magic into your everyday moments.
             </p>
             <div className="hero-actions">
               <Link to="/shop" className="btn">Explore the collection</Link>
@@ -38,31 +41,31 @@ export default function Home() {
       </section>
 
       <section className="container section">
-        <div className="section-head">
+        <Reveal className="section-head">
           <div>
             <p className="eyebrow">Find your favourite</p>
             <h2>Made to make you smile</h2>
           </div>
           <Link to="/shop" className="link">View all →</Link>
-        </div>
+        </Reveal>
         <div className="collections">
           {collections.map((c) => (
-            <Link key={c.category} to={`/shop?c=${c.category}`} className="collection">
+            <Reveal as={Link} key={c.category} to={c.to ?? `/shop?c=${c.category}`} className="collection">
               <img src={c.img} alt="" loading="lazy" style={{ objectPosition: c.pos, '--z': c.zoom, transformOrigin: c.pos }} />
               <span>{c.name}</span>
-            </Link>
+            </Reveal>
           ))}
         </div>
       </section>
 
       <section className="container section">
-        <div className="section-head">
+        <Reveal className="section-head">
           <div>
             <p className="eyebrow">The candle edit</p>
             <h2>Shop our collection</h2>
           </div>
           <Link to="/shop" className="link">View all →</Link>
-        </div>
+        </Reveal>
         <div className="grid">
           {products.slice(0, 4).map((p) => (
             <ProductCard key={p.id} product={p} />
@@ -71,7 +74,7 @@ export default function Home() {
       </section>
 
       <section className="band">
-        <div className="container gifting">
+        <Reveal className="container gifting">
           <img
             src="/img/gifting.jpg"
             alt="A cream gift basket of hand-poured peony and ranunculus candles tied with a pink ribbon"
@@ -84,17 +87,24 @@ export default function Home() {
             <p className="muted">
               Let's create a thoughtful candle gift or customised hamper for your occasion.
             </p>
-            <a
-              className="btn"
-              href={whatsappUrl(GIFT_ENQUIRY)}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Enquire on WhatsApp
-            </a>
+            <div className="btn-row">
+              <Link to="/gift-box" className="btn">Build your gift box</Link>
+              <a
+                className="btn btn-outline"
+                href={whatsappUrl(GIFT_ENQUIRY)}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Enquire on WhatsApp
+              </a>
+            </div>
           </div>
-        </div>
+        </Reveal>
       </section>
+
+      <Testimonials />
+
+      <InstagramStrip />
     </>
   );
 }

@@ -2,6 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useState } from 'rea
 
 const KEY = 'molten-stories-theme';
 const ThemeContext = createContext(null);
+let animTimer;
+let glowTimer;
 
 function readInitial() {
   try {
@@ -26,7 +28,22 @@ export function ThemeProvider({ children }) {
     }
   }, [theme]);
 
-  const toggle = useCallback(() => setTheme((t) => (t === 'dark' ? 'light' : 'dark')), []);
+  const toggle = useCallback(() => {
+    // Briefly enable colour transitions so the whole page fades between themes.
+    const root = document.documentElement;
+    root.classList.add('theme-anim');
+    clearTimeout(animTimer);
+    animTimer = setTimeout(() => root.classList.remove('theme-anim'), 450);
+    // Lighting the candle (dark -> light) also plays a warm glow across the page.
+    if (theme === 'dark') {
+      root.classList.remove('theme-lighting');
+      void root.offsetWidth; // restart the animation if toggled quickly
+      root.classList.add('theme-lighting');
+      clearTimeout(glowTimer);
+      glowTimer = setTimeout(() => root.classList.remove('theme-lighting'), 1200);
+    }
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  }, [theme]);
 
   return <ThemeContext.Provider value={{ theme, toggle }}>{children}</ThemeContext.Provider>;
 }

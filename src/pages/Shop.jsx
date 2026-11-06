@@ -1,44 +1,52 @@
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
-import { categories } from '../data/products';
+import { EmptySearchIllustration } from '../components/EmptyIllustrations';
+import { categories, categoriesOf } from '../data/products';
 import { useProducts } from '../context/ProductsContext';
 
 export default function Shop() {
   const { products } = useProducts();
   const [params] = useSearchParams();
-  const initial = categories.includes(params.get('c')) ? params.get('c') : 'All';
-  const [category, setCategory] = useState(initial);
+  const initial = categories.includes(params.get('c')) && params.get('c') !== 'All' ? [params.get('c')] : [];
+  const [selected, setSelected] = useState(initial); // empty = all collections
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState('featured');
+
+  const toggle = (c) =>
+    setSelected((s) => (s.includes(c) ? s.filter((x) => x !== c) : [...s, c]));
 
   const list = useMemo(() => {
     let out = products.filter(
       (p) =>
-        (category === 'All' || p.category === category) &&
-        (p.name + ' ' + p.desc + ' ' + p.category).toLowerCase().includes(query.trim().toLowerCase())
+        (selected.length === 0 || categoriesOf(p).some((c) => selected.includes(c))) &&
+        (p.name + ' ' + p.desc + ' ' + categoriesOf(p).join(' ')).toLowerCase().includes(query.trim().toLowerCase())
     );
     if (sort === 'low') out = [...out].sort((a, b) => a.price - b.price);
     if (sort === 'high') out = [...out].sort((a, b) => b.price - a.price);
     if (sort === 'name') out = [...out].sort((a, b) => a.name.localeCompare(b.name));
     return out;
-  }, [products, category, query, sort]);
+  }, [products, selected, query, sort]);
 
   return (
     <div className="container page">
       <h1>Shop candles</h1>
 
       <div className="toolbar">
-        <div className="chips" role="group" aria-label="Filter by scent family">
-          {categories.map((c) => (
-            <button
-              key={c}
-              className={`chip ${c === category ? 'active' : ''}`}
-              onClick={() => setCategory(c)}
-            >
-              {c}
-            </button>
-          ))}
+        <div className="chips" role="group" aria-label="Filter by collection (select one or more)">
+          {categories.map((c) => {
+            const active = c === 'All' ? selected.length === 0 : selected.includes(c);
+            return (
+              <button
+                key={c}
+                className={`chip ${active ? 'active' : ''}`}
+                aria-pressed={active}
+                onClick={() => (c === 'All' ? setSelected([]) : toggle(c))}
+              >
+                {c}
+              </button>
+            );
+          })}
         </div>
         <div className="toolbar-right">
           <input
@@ -58,7 +66,14 @@ export default function Shop() {
       </div>
 
       {list.length === 0 ? (
-        <p className="muted">No candles match your search.</p>
+        <div className="center-text empty-cart empty-search-state">
+          <EmptySearchIllustration />
+          <h2>No candles match your search</h2>
+          <p className="muted">Try searching with a different scent, note, or clear your filters.</p>
+          <button type="button" className="btn btn-outline" onClick={() => { setSelected([]); setQuery(''); }}>
+            View all candles
+          </button>
+        </div>
       ) : (
         <div className="grid">
           {list.map((p) => (

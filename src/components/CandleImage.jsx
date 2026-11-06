@@ -29,11 +29,11 @@ export default function CandleImage({ color, label }) {
       </defs>
 
       {/* halo */}
-      <circle cx="100" cy="70" r="66" fill={`url(#halo-${id})`} />
+      <circle className="candle-halo" cx="100" cy="70" r="66" fill={`url(#halo-${id})`} />
 
       {/* flame */}
-      <path d="M100 30 C113 52 113 68 100 80 C87 68 87 52 100 30 Z" fill={`url(#gold-${id})`} />
-      <path d="M100 50 C106 60 106 70 100 76 C94 70 94 60 100 50 Z" fill="#fff3cf" fillOpacity="0.85" />
+      <path className="candle-flame-outer" d="M100 30 C113 52 113 68 100 80 C87 68 87 52 100 30 Z" fill={`url(#gold-${id})`} />
+      <path className="candle-flame-inner" d="M100 50 C106 60 106 70 100 76 C94 70 94 60 100 50 Z" fill="#fff3cf" fillOpacity="0.85" />
 
       {/* wick */}
       <rect x="98.5" y="78" width="3" height="16" rx="1.5" style={{ fill: 'var(--wick)' }} />

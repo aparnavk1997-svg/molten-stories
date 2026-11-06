@@ -4,6 +4,10 @@
 // `image`. With no photo, the illustrated candle in `color` is shown. Optional `old` is a struck-through price.
 export const categories = ['All', 'Floral', 'Decorative', 'Everyday', 'Gifting'];
 
+// A product can sit in several collections via `categories`; older entries only have a single `category`.
+export const categoriesOf = (p) =>
+  Array.isArray(p.categories) && p.categories.length ? p.categories : [p.category];
+
 export const products = [
   // Floral
   { id: 1, name: 'Peony Paradise', category: 'Floral', price: 380, color: '#e8a5b4', image: '/img/products/peony-paradise.jpg',

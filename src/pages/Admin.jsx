@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import ProductImage, { getImages } from '../components/ProductImage';
-import { categories } from '../data/products';
+import { categories, categoriesOf } from '../data/products';
 import { useProducts } from '../context/ProductsContext';
 import { formatINR } from '../utils/pricing';
 
@@ -11,7 +11,7 @@ const PASSCODE = import.meta.env.VITE_ADMIN_PASSCODE || 'molten-admin';
 const AUTH_KEY = 'molten-stories-admin';
 const CATEGORY_OPTIONS = categories.filter((c) => c !== 'All');
 const MAX_IMAGE_SIDE = 900;
-const EMPTY = { name: '', category: CATEGORY_OPTIONS[0], price: '', old: '', color: '#c9a95c', desc: '', images: [] };
+const EMPTY = { name: '', categories: [CATEGORY_OPTIONS[0]], price: '', old: '', color: '#c9a95c', desc: '', images: [] };
 
 /** Downscale an uploaded image to a JPEG data URL so it fits in browser storage. */
 function readImage(file) {
@@ -75,7 +75,9 @@ function Login({ onSuccess }) {
 }
 
 export default function Admin() {
-  const { products, saveError, addProduct, updateProduct, deleteProduct, resetProducts } = useProducts();
+  const {
+    allProducts: products, saveError, addProduct, updateProduct, setProductEnabled, deleteProduct, resetProducts,
+  } = useProducts();
   const [authed, setAuthed] = useState(() => sessionStorage.getItem(AUTH_KEY) === '1');
   const [editingId, setEditingId] = useState(null); // null = adding a new product
   const [form, setForm] = useState(EMPTY);
@@ -86,10 +88,16 @@ export default function Admin() {
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
+  const toggleCategory = (c) =>
+    setForm((f) => ({
+      ...f,
+      categories: f.categories.includes(c) ? f.categories.filter((x) => x !== c) : [...f.categories, c],
+    }));
+
   const startEdit = (p) => {
     setEditingId(p.id);
     setForm({
-      name: p.name, category: p.category, price: String(p.price), old: p.old ? String(p.old) : '',
+      name: p.name, categories: categoriesOf(p), price: String(p.price), old: p.old ? String(p.old) : '',
       color: p.color || '#c9a95c', desc: p.desc, images: getImages(p),
     });
     setErrors({});
@@ -137,6 +145,7 @@ export default function Admin() {
     const old = form.old === '' ? 0 : Number(form.old);
     const next = {};
     if (!form.name.trim()) next.name = 'Enter a name.';
+    if (form.categories.length === 0) next.categories = 'Pick at least one collection.';
     if (!form.price || !(price > 0)) next.price = 'Enter a price above 0.';
     if (form.old !== '' && !(old >= 0)) next.old = 'Enter a valid original price.';
     if (!form.desc.trim()) next.desc = 'Enter a short description.';
@@ -145,7 +154,8 @@ export default function Admin() {
 
     const data = {
       name: form.name.trim(),
-      category: form.category,
+      category: form.categories[0],
+      categories: form.categories,
       price,
       old: old > price ? old : price,
       color: form.color,
@@ -160,6 +170,11 @@ export default function Admin() {
       setNotice(`Saved "${data.name}".`);
     }
     reset();
+  };
+
+  const toggleEnabled = (p) => {
+    setProductEnabled(p.id, !!p.disabled);
+    setNotice(p.disabled ? `"${p.name}" is now visible in the shop.` : `"${p.name}" is hidden from the shop.`);
   };
 
   const remove = (p) => {
@@ -206,12 +221,22 @@ export default function Admin() {
             {errors.name && <span className="error">{errors.name}</span>}
           </label>
 
-          <label className="field">
-            Collection
-            <select value={form.category} onChange={set('category')}>
-              {CATEGORY_OPTIONS.map((c) => <option key={c}>{c}</option>)}
-            </select>
-          </label>
+          <fieldset className="field check-group">
+            <legend>Collections (pick one or more)</legend>
+            <div className="check-row">
+              {CATEGORY_OPTIONS.map((c) => (
+                <label key={c} className="check">
+                  <input
+                    type="checkbox"
+                    checked={form.categories.includes(c)}
+                    onChange={() => toggleCategory(c)}
+                  />
+                  {c}
+                </label>
+              ))}
+            </div>
+            {errors.categories && <span className="error">{errors.categories}</span>}
+          </fieldset>
 
           <div className="two-col">
             <label className="field">
@@ -270,17 +295,40 @@ export default function Admin() {
         </form>
 
         <div className="panel">
-          <h3 className="panel-title">Products ({products.length})</h3>
+          <h3 className="panel-title">
+            Products ({products.length})
+            {products.some((p) => p.disabled) && (
+              <span className="muted small"> · {products.filter((p) => p.disabled).length} hidden</span>
+            )}
+          </h3>
           {products.length === 0 && <p className="panel-pad muted">No products yet.</p>}
           <ul className="plain">
             {products.map((p) => (
-              <li key={p.id} className="admin-row">
-                <div className="cart-thumb"><ProductImage product={p} /></div>
+              <li key={p.id} className={`admin-row ${p.disabled ? 'is-disabled' : ''}`}>
+                {p.disabled ? (
+                  <span className="cart-thumb"><ProductImage product={p} /></span>
+                ) : (
+                  <Link to={`/product/${p.id}`} className="cart-thumb" aria-label={`View ${p.name}`}>
+                    <ProductImage product={p} />
+                  </Link>
+                )}
                 <div className="cart-info">
-                  <Link to={`/product/${p.id}`}><strong>{p.name}</strong></Link>
-                  <span className="muted small">{p.category} · {formatINR(p.price)}</span>
+                  {p.disabled ? (
+                    <strong>{p.name}</strong>
+                  ) : (
+                    <Link to={`/product/${p.id}`}><strong>{p.name}</strong></Link>
+                  )}
+                  <span className="muted small">{categoriesOf(p).join(', ')} · {formatINR(p.price)}</span>
+                  {p.disabled && <span className="admin-hidden">Hidden from shop</span>}
                 </div>
                 <div className="btn-row">
+                  <button
+                    className="btn btn-outline btn-small"
+                    onClick={() => toggleEnabled(p)}
+                    aria-label={`${p.disabled ? 'Enable' : 'Disable'} ${p.name}`}
+                  >
+                    {p.disabled ? 'Enable' : 'Disable'}
+                  </button>
                   <button className="btn btn-outline btn-small" onClick={() => startEdit(p)}>Edit</button>
                   <button className="btn btn-outline btn-small" onClick={() => remove(p)}>Delete</button>
                 </div>

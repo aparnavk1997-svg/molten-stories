@@ -29,16 +29,28 @@ export function ProductsProvider({ children }) {
 
   const value = useMemo(
     () => ({
-      products,
+      // Storefront only sees enabled products; the admin page uses allProducts.
+      products: products.filter((p) => !p.disabled),
+      allProducts: products,
       saveError,
-      getProduct: (id) => products.find((p) => p.id === Number(id)),
+      getProduct: (id) => products.find((p) => p.id === Number(id) && !p.disabled),
       addProduct: (data) => {
         const id = products.reduce((m, p) => Math.max(m, p.id), 0) + 1;
         setProducts((list) => [...list, { ...data, id }]);
         return id;
       },
       updateProduct: (id, data) =>
-        setProducts((list) => list.map((p) => (p.id === id ? { ...data, id } : p))),
+        setProducts((list) =>
+          list.map((p) => (p.id === id ? { ...data, id, ...(p.disabled ? { disabled: true } : {}) } : p))
+        ),
+      setProductEnabled: (id, enabled) =>
+        setProducts((list) =>
+          list.map((p) => {
+            if (p.id !== id) return p;
+            const { disabled, ...rest } = p;
+            return enabled ? rest : { ...rest, disabled: true };
+          })
+        ),
       deleteProduct: (id) => setProducts((list) => list.filter((p) => p.id !== id)),
       resetProducts: () => setProducts(seedProducts),
     }),

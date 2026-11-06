@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom';
-import { EMAIL, INSTAGRAM_HANDLE, INSTAGRAM_URL, WHATSAPP_DISPLAY, whatsappUrl } from '../utils/whatsapp';
+import {
+  EMAIL, INSTAGRAM_HANDLE, INSTAGRAM_URL, WHATSAPP_DISPLAY, PHONE_NUMBER, PHONE_DISPLAY, whatsappUrl,
+} from '../utils/whatsapp';
 
 const iconProps = {
   width: 18,
@@ -18,6 +20,12 @@ const WhatsAppIcon = () => (
   <svg {...iconProps}>
     <path d="M3 21l1.65-4.8A8.5 8.5 0 1 1 8 19.4L3 21z" />
     <path d="M9 10c0 3 2 5 5 5l1.2-1.4-1.9-1-.9.7c-.8-.4-1.5-1.1-1.9-1.9l.7-.9-1-1.9L9 10z" />
+  </svg>
+);
+
+const PhoneIcon = () => (
+  <svg {...iconProps}>
+    <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" />
   </svg>
 );
 
@@ -44,8 +52,19 @@ export default function Footer() {
           <h4>Explore</h4>
           <ul className="plain">
             <li><Link to="/shop">Shop candles</Link></li>
+            <li><Link to="/gift-box">Build a gift box</Link></li>
             <li><Link to="/about">Our story</Link></li>
+            <li><Link to="/review">Write a review</Link></li>
             <li><Link to="/contact">Contact</Link></li>
+          </ul>
+        </div>
+        <div>
+          <h4>Policies</h4>
+          <ul className="plain">
+            <li><Link to="/policies/delivery">Delivery policy</Link></li>
+            <li><Link to="/policies/refund">Refund policy</Link></li>
+            <li><Link to="/policies/returns">Return policy</Link></li>
+            <li><Link to="/policies/privacy">Privacy policy</Link></li>
           </ul>
         </div>
         <div>
@@ -62,6 +81,16 @@ export default function Footer() {
               >
                 <WhatsAppIcon />
                 <span>{WHATSAPP_DISPLAY}</span>
+              </a>
+            </li>
+            <li>
+              <a
+                className="link footer-contact"
+                href={`tel:+${PHONE_NUMBER}`}
+                aria-label={`Call ${PHONE_DISPLAY}`}
+              >
+                <PhoneIcon />
+                <span>{PHONE_DISPLAY}</span>
               </a>
             </li>
             <li>
