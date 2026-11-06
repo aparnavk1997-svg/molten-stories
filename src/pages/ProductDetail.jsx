@@ -15,7 +15,7 @@ import { categoriesOf } from '../data/products';
 export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { products, getProduct } = useProducts();
+  const { products, getProduct, loading } = useProducts();
   const product = getProduct(id);
   const { add, address, placeOrder } = useCart();
   const { record } = useRecentlyViewed();
@@ -45,6 +45,10 @@ export default function ProductDetail() {
       window.prompt('Copy this link', url);
     }
   };
+
+  if (!product && loading) {
+    return <div className="container page center-text"><p className="muted">Loading…</p></div>;
+  }
 
   if (!product) {
     return (

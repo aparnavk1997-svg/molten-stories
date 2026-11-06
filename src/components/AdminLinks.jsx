@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useAdmin } from '../context/AdminContext';
+import { useAuth } from '../context/AuthContext';
 
 const iconProps = {
   viewBox: '0 0 24 24',
@@ -14,7 +14,7 @@ const iconProps = {
 
 /** Round pencil button laid over a product image; only rendered when signed in as admin. */
 export function AdminEditLink({ product }) {
-  const { isAdmin } = useAdmin();
+  const { isAdmin } = useAuth();
   if (!isAdmin) return null;
   const label = `Edit ${product.name} in admin`;
   return (
@@ -27,7 +27,7 @@ export function AdminEditLink({ product }) {
   );
 }
 
-/** Padlock icon that goes to the admin page (which asks for the passcode when needed). */
+/** Padlock icon that goes to the admin page (which asks for sign-in when needed). */
 export function AdminLink({ className = '' }) {
   return (
     <Link to="/admin" className={`admin-link ${className}`} aria-label="Admin" title="Admin">

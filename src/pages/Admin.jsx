@@ -4,21 +4,43 @@ import ProductImage, { getImages } from '../components/ProductImage';
 import ImageFitDialog from '../components/ImageFitDialog';
 import { categories, categoriesOf } from '../data/products';
 import { useProducts } from '../context/ProductsContext';
-import { useAdmin } from '../context/AdminContext';
 import { fileToSource } from '../utils/imageFit';
 import { formatINR } from '../utils/pricing';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
 
 const CATEGORY_OPTIONS = categories.filter((c) => c !== 'All');
 const EMPTY = { name: '', categories: [CATEGORY_OPTIONS[0]], price: '', old: '', color: '#c9a95c', desc: '', images: [] };
 
-function Login() {
-  const { signIn } = useAdmin();
-  const [code, setCode] = useState('');
-  const [error, setError] = useState('');
+/** Upload a fitted photo (JPEG data URL) to Supabase Storage and return its public URL. */
+async function uploadImage(dataUrl) {
+  const blob = await (await fetch(dataUrl)).blob();
+  const path = `${crypto.randomUUID()}.jpg`;
+  const { error } = await supabase.storage.from('product-images').upload(path, blob, {
+    contentType: 'image/jpeg',
+    cacheControl: '31536000',
+  });
+  if (error) throw error;
+  return supabase.storage.from('product-images').getPublicUrl(path).data.publicUrl;
+}
 
-  const submit = (e) => {
+function Login() {
+  const { signIn } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e) => {
     e.preventDefault();
-    if (!signIn(code)) setError('Incorrect passcode.');
+    setBusy(true);
+    setError('');
+    try {
+      await signIn(email, password);
+    } catch (err) {
+      setError(err.message);
+    }
+    setBusy(false);
   };
 
   return (
@@ -27,17 +49,21 @@ function Login() {
       <h1>Sign in</h1>
       <form className="form narrow-form" onSubmit={submit}>
         <label className="field">
-          Passcode
+          Email
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" autoFocus />
+        </label>
+        <label className="field">
+          Password
           <input
             type="password"
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
             aria-invalid={!!error}
-            autoFocus
           />
         </label>
         {error && <span className="error" role="alert">{error}</span>}
-        <button className="btn" type="submit">Sign in</button>
+        <button className="btn" type="submit" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
       </form>
     </div>
   );
@@ -45,9 +71,10 @@ function Login() {
 
 export default function Admin() {
   const {
-    allProducts: products, saveError, addProduct, updateProduct, setProductEnabled, deleteProduct, resetProducts,
+    allProducts: products, loading: productsLoading, loadError, addProduct, updateProduct, setProductEnabled, deleteProduct,
   } = useProducts();
-  const { isAdmin: authed, signOut } = useAdmin();
+  const { enabled: supabaseEnabled, loading: authLoading, session, isAdmin, signOut } = useAuth();
+  const [busy, setBusy] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [editingId, setEditingId] = useState(null); // null = adding a new product
   const [form, setForm] = useState(EMPTY);
@@ -59,14 +86,56 @@ export default function Admin() {
   // Arriving from a product image's edit button (/admin?edit=ID): open that product in the form.
   const editParam = searchParams.get('edit');
   useEffect(() => {
-    if (!authed || !editParam) return;
+    if (!isAdmin || !editParam) return;
     const target = products.find((p) => p.id === Number(editParam));
     if (target) startEdit(target);
-    setSearchParams({}, { replace: true });
+    if (target || !productsLoading) setSearchParams({}, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authed, editParam]);
+  }, [isAdmin, editParam, products, productsLoading]);
 
-  if (!authed) return <Login />;
+  if (!supabaseEnabled) {
+    return (
+      <div className="container page narrow">
+        <p className="eyebrow">Admin</p>
+        <h1>Backend not connected</h1>
+        <p className="muted">
+          Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY (see .env.example) and rebuild to manage products.
+        </p>
+      </div>
+    );
+  }
+  if (authLoading) return <div className="container page"><p className="muted">Loading…</p></div>;
+  if (!session) return <Login />;
+  if (!isAdmin) {
+    return (
+      <div className="container page narrow">
+        <p className="eyebrow">Admin</p>
+        <h1>No admin access</h1>
+        <p className="muted">This account isn't an admin. Sign out and use the admin login to manage products.</p>
+        <div className="btn-row">
+          <button className="btn" onClick={signOut}>Sign out</button>
+          <Link className="btn btn-outline" to="/account">My account</Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Run a database action and show a message on failure instead of failing silently.
+  const run = async (action, okMessage) => {
+    setBusy(true);
+    try {
+      await action();
+      setErrors((x) => ({ ...x, save: undefined }));
+      setNotice(okMessage);
+      return true;
+    } catch (err) {
+      setNotice('');
+      setErrors((x) => ({ ...x, save: err.message }));
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
@@ -102,29 +171,43 @@ export default function Admin() {
     const good = files.filter((f) => f.type.startsWith('image/'));
     const queued = [];
     let failed = bad.length;
+    let lastError = '';
+    setBusy(true);
     for (const file of good) {
       try {
         queued.push({ src: await fileToSource(file), replaceIndex: null });
-      } catch {
+      } catch (err) {
         failed += 1;
+        lastError = err.message || '';
       }
     }
+    setBusy(false);
     if (queued.length) setFitQueue((q) => [...q, ...queued]);
     setErrors((x) => ({
       ...x,
-      image: failed ? `${failed} file${failed === 1 ? ' was' : 's were'} skipped: not a readable image.` : undefined,
+      image: failed
+        ? `${failed} file${failed === 1 ? ' was' : 's were'} skipped${lastError ? `: ${lastError}` : ': not a readable image.'}`
+        : undefined,
     }));
   };
 
-  const applyFit = (dataUrl) => {
+  const applyFit = async (dataUrl) => {
     const { replaceIndex } = fitQueue[0];
-    setForm((f) => ({
-      ...f,
-      images:
-        replaceIndex == null
-          ? [...f.images, dataUrl]
-          : f.images.map((img, n) => (n === replaceIndex ? dataUrl : img)),
-    }));
+    setBusy(true);
+    try {
+      const url = await uploadImage(dataUrl);
+      setForm((f) => ({
+        ...f,
+        images:
+          replaceIndex == null
+            ? [...f.images, url]
+            : f.images.map((img, n) => (n === replaceIndex ? url : img)),
+      }));
+      setErrors((x) => ({ ...x, image: undefined }));
+    } catch (err) {
+      setErrors((x) => ({ ...x, image: `Photo upload failed: ${err.message}` }));
+    }
+    setBusy(false);
     setFitQueue((q) => q.slice(1));
   };
 
@@ -136,7 +219,7 @@ export default function Admin() {
   const makeMain = (i) =>
     setForm((f) => ({ ...f, images: [f.images[i], ...f.images.filter((_, n) => n !== i)] }));
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     const price = Number(form.price);
     const old = form.old === '' ? 0 : Number(form.old);
@@ -157,35 +240,24 @@ export default function Admin() {
       old: old > price ? old : price,
       color: form.color,
       desc: form.desc.trim(),
-      ...(form.images.length ? { images: form.images } : {}),
+      images: form.images,
     };
-    if (editingId == null) {
-      addProduct(data);
-      setNotice(`Added "${data.name}".`);
-    } else {
-      updateProduct(editingId, data);
-      setNotice(`Saved "${data.name}".`);
-    }
-    reset();
+    const ok = editingId == null
+      ? await run(() => addProduct(data), `Added "${data.name}".`)
+      : await run(() => updateProduct(editingId, data), `Saved "${data.name}".`);
+    if (ok) reset();
   };
 
-  const toggleEnabled = (p) => {
-    setProductEnabled(p.id, !!p.disabled);
-    setNotice(p.disabled ? `"${p.name}" is now visible in the shop.` : `"${p.name}" is hidden from the shop.`);
-  };
+  const toggleEnabled = (p) =>
+    run(
+      () => setProductEnabled(p.id, !!p.disabled),
+      p.disabled ? `"${p.name}" is now visible in the shop.` : `"${p.name}" is hidden from the shop.`
+    );
 
-  const remove = (p) => {
+  const remove = async (p) => {
     if (!window.confirm(`Delete "${p.name}"?`)) return;
-    deleteProduct(p.id);
-    if (editingId === p.id) reset();
-    setNotice(`Deleted "${p.name}".`);
-  };
-
-  const restoreDefaults = () => {
-    if (!window.confirm('Replace all products with the original catalogue? Your changes will be lost.')) return;
-    resetProducts();
-    reset();
-    setNotice('Restored the original catalogue.');
+    const ok = await run(() => deleteProduct(p.id), `Deleted "${p.name}".`);
+    if (ok && editingId === p.id) reset();
   };
 
   return (
@@ -197,11 +269,9 @@ export default function Admin() {
         </div>
         <button className="btn btn-outline btn-small" onClick={signOut}>Sign out</button>
       </div>
-      <p className="muted small">
-        Changes are saved in this browser only, so they won't appear for other visitors or devices.
-      </p>
+      <p className="muted small">Changes are saved to the database and appear for all visitors straight away.</p>
       {notice && <p className="admin-notice" role="status">{notice}</p>}
-      {saveError && <p className="error" role="alert">{saveError}</p>}
+      {(errors.save || loadError) && <p className="error" role="alert">{errors.save || loadError}</p>}
 
       <div className="admin-layout">
         <form className="panel panel-pad form admin-form" onSubmit={submit} noValidate>
@@ -251,7 +321,7 @@ export default function Admin() {
 
           <label className="field">
             Photos (you can pick several)
-            <input type="file" accept="image/*" multiple onChange={onFiles} />
+            <input type="file" accept="image/*" multiple onChange={onFiles} disabled={busy} />
             <span className="muted small">
               Photos are shown at a 4:5 ratio everywhere. You can adjust how each one fits after choosing it.
             </span>
@@ -283,7 +353,9 @@ export default function Admin() {
             <ProductImage product={{ ...form, name: form.name || 'Preview' }} />
           </div>
           <div className="btn-row">
-            <button className="btn" type="submit">{editingId == null ? 'Add product' : 'Save changes'}</button>
+            <button className="btn" type="submit" disabled={busy}>
+              {busy ? 'Working…' : editingId == null ? 'Add product' : 'Save changes'}
+            </button>
             {editingId != null && (
               <button className="btn btn-outline" type="button" onClick={reset}>Cancel</button>
             )}
@@ -321,19 +393,17 @@ export default function Admin() {
                   <button
                     className="btn btn-outline btn-small"
                     onClick={() => toggleEnabled(p)}
+                    disabled={busy}
                     aria-label={`${p.disabled ? 'Enable' : 'Disable'} ${p.name}`}
                   >
                     {p.disabled ? 'Enable' : 'Disable'}
                   </button>
                   <button className="btn btn-outline btn-small" onClick={() => startEdit(p)}>Edit</button>
-                  <button className="btn btn-outline btn-small" onClick={() => remove(p)}>Delete</button>
+                  <button className="btn btn-outline btn-small" onClick={() => remove(p)} disabled={busy}>Delete</button>
                 </div>
               </li>
             ))}
           </ul>
-          <div className="panel-pad">
-            <button className="btn btn-outline btn-small" onClick={restoreDefaults}>Restore original catalogue</button>
-          </div>
         </div>
       </div>
       {fitQueue.length > 0 && (

@@ -8,6 +8,8 @@ const MAX_SOURCE_SIDE = 1600;
 export function loadImage(src) {
   return new Promise((resolve, reject) => {
     const img = new Image();
+    // Remote photos (Supabase Storage) must be CORS-clean or the canvas can't export them.
+    if (/^https?:/.test(src)) img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
     img.onerror = () => reject(new Error('That file could not be read as an image.'));
     img.src = src;
