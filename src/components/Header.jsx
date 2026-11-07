@@ -4,6 +4,7 @@ import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useAuth } from '../context/AuthContext';
 import ThemeToggle from './ThemeToggle';
+import AdminOrderBell from './AdminOrderBell';
 
 export default function Header() {
   const { count } = useCart();
@@ -27,6 +28,7 @@ export default function Header() {
         </nav>
 
         <div className="header-actions">
+          <AdminOrderBell />
           <NavLink
             to="/saved"
             className="icon-link"

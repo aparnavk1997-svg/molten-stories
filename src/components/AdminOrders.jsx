@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { ORDERS_CHANGED } from './AdminOrderBell';
 import { useProducts } from '../context/ProductsContext';
 import { deliveryInfo, formatINR, isAddressValid } from '../utils/pricing';
-import { ORDER_STATUSES, formatDate, shareOrderOnWhatsApp, statusLabel } from '../utils/orders';
+import { ORDER_STATUSES, formatDate, orderWhatsAppUrl, shareOrderOnWhatsApp, statusLabel } from '../utils/orders';
+import { paymentConfigured } from '../utils/payment';
 
 const EMPTY_CUSTOMER = { name: '', phone: '', street: '', city: '', state: '', pin: '' };
 
@@ -120,14 +122,24 @@ export default function AdminOrders() {
     if (err) return setError(err.message);
     setCreated(data);
     setOrders((list) => [data, ...list]);
+    window.dispatchEvent(new Event(ORDERS_CHANGED));
     resetForm();
   };
 
   const changeStatus = async (order, status) => {
+    // Confirming an order opens WhatsApp with the payment request. Open the tab now, inside the click, so the
+    // browser allows it, and fill in the message once the status has saved.
+    const win = status === 'confirmed' ? window.open('about:blank', '_blank') : null;
+    if (win) win.opener = null;
     const { data, error: err } = await supabase
       .from('orders').update({ status }).eq('id', order.id).select().single();
-    if (err) return setLoadError(err.message);
+    if (err) {
+      if (win) win.close();
+      return setLoadError(err.message);
+    }
     setOrders((list) => list.map((o) => (o.id === order.id ? data : o)));
+    if (win) win.location.href = orderWhatsAppUrl(data);
+    window.dispatchEvent(new Event(ORDERS_CHANGED));
   };
 
   return (
@@ -242,6 +254,12 @@ export default function AdminOrders() {
 
       <div className="panel">
         <h3 className="panel-title">Orders ({orders.length})</h3>
+        {!paymentConfigured && (
+          <p className="error panel-pad" role="alert">
+            UPI payment details are not set up, so confirmation messages will not ask for payment. Set VITE_UPI_ID (and VITE_UPI_NAME) and rebuild.
+          </p>
+        )}
+        <p className="muted small panel-pad">Setting an order to Confirmed opens WhatsApp with the payment request, ready to send.</p>
         {loadError && <p className="error panel-pad" role="alert">{loadError}</p>}
         {orders.length === 0 && !loadError && <p className="panel-pad muted">No orders yet.</p>}
         <ul className="plain">

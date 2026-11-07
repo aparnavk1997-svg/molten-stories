@@ -1,4 +1,5 @@
 import { formatINR } from './pricing';
+import { UPI_ID, UPI_NAME, paymentConfigured, payUrl } from './payment';
 
 export const ORDER_STATUSES = [
   { value: 'placed', label: 'Placed' },
@@ -18,7 +19,7 @@ export const formatDateTime = (iso) =>
 
 export const trackUrl = (code) => `${window.location.origin}/track?code=${encodeURIComponent(code)}`;
 
-/** "Order confirmed" message the admin sends to the customer on WhatsApp. */
+/** The WhatsApp message for an order, worded for its current status. A confirmed order also asks for payment. */
 export function orderConfirmationMessage(order) {
   const lines = order.items.map((i) => `• ${i.name} x ${i.qty} — ${formatINR(i.price * i.qty)}`);
   (order.hampers || []).forEach((h, n) => {
@@ -26,8 +27,18 @@ export function orderConfirmationMessage(order) {
     h.items.forEach((i) => lines.push(`   • ${i.name} x ${i.qty} — ${formatINR(i.price * i.qty)}`));
   });
   if (order.gift_wrap) lines.push('• Gift wrap');
-  return [
-    `Hi ${order.customer_name}! 🕯️ Your Molten Stories order is confirmed.`,
+
+  const headline = {
+    placed: 'We have received your order and will confirm it shortly.',
+    confirmed: 'Your order is confirmed.',
+    packed: 'Your order is packed and will be on its way soon.',
+    shipped: 'Your order has been shipped.',
+    delivered: 'Your order has been delivered. We hope you love it!',
+    cancelled: 'Your order has been cancelled.',
+  }[order.status] || 'Here is an update on your order.';
+
+  const out = [
+    `Hi ${order.customer_name}! 🕯️ ${headline}`,
     '',
     `Order ID: ${order.code}`,
     '',
@@ -40,14 +51,29 @@ export function orderConfirmationMessage(order) {
     'Delivering to:',
     `${order.customer_name}, ${order.street}, ${order.city}, ${order.state} - ${order.pin}`,
     '',
-    `Track your order any time: ${trackUrl(order.code)}`,
-    '',
-    'Thank you for choosing Molten Stories!',
-  ].join('\n');
+  ];
+
+  if (order.status === 'confirmed' && paymentConfigured) {
+    out.push(
+      `💳 Please pay ${formatINR(order.total)} to complete your order.`,
+      '',
+      `UPI ID: ${UPI_ID} (${UPI_NAME})`,
+      `Scan the QR code or pay with your UPI app here: ${payUrl(order.code)}`,
+      '',
+      'Once you have paid, please reply here with a screenshot so we can confirm your payment and start preparing your order.',
+      ''
+    );
+  }
+
+  out.push(`Track your order any time: ${trackUrl(order.code)}`, '', 'Thank you for choosing Molten Stories!');
+  return out.join('\n');
 }
 
-/** Opens WhatsApp with the confirmation addressed to the customer's phone (10-digit Indian number). */
+/** WhatsApp link addressed to the customer's phone (10-digit Indian number), message filled in. */
+export const orderWhatsAppUrl = (order) =>
+  `https://wa.me/91${order.phone}?text=${encodeURIComponent(orderConfirmationMessage(order))}`;
+
+/** Opens WhatsApp with the message for this order. */
 export function shareOrderOnWhatsApp(order) {
-  const url = `https://wa.me/91${order.phone}?text=${encodeURIComponent(orderConfirmationMessage(order))}`;
-  window.open(url, '_blank', 'noopener');
+  window.open(orderWhatsAppUrl(order), '_blank', 'noopener');
 }
