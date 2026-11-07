@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { supabase } from '../lib/supabase';
 import { formatINR, isPin } from '../utils/pricing';
+import { fetchAddressFromPincode } from '../utils/pincode';
 import { formatDate, statusLabel } from '../utils/orders';
 import { OrderProgress } from './Track';
 
@@ -374,11 +375,42 @@ function AddressForm({ initial, onSave, onCancel }) {
   const [f, setF] = useState(initial);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const { errors, shown, blur, setSubmitted } = useFieldErrors(f, validateAddress);
-  const set = (k) => (e) => {
+  const [pinLookup, setPinLookup] = useState({ loading: false, error: null, location: null });
+  const { errors, shown, blur, setSubmitted } = useFieldErrors(f, (v) => {
+    const e = validateAddress(v);
+    if (pinLookup.error) e.pin = pinLookup.error;
+    return e;
+  });
+  const set = (k) => async (e) => {
     let val = e.target.value;
     if (k === 'phone') val = val.replace(/\D/g, '').slice(0, 10);
-    if (k === 'pin') val = val.replace(/\D/g, '').slice(0, 6);
+    if (k === 'pin') {
+      val = val.replace(/\D/g, '').slice(0, 6);
+      if (val.length === 6) {
+        if (!isPin(val)) {
+          setPinLookup({ loading: false, error: 'Enter a valid 6-digit PIN code.', location: null });
+        } else {
+          setPinLookup({ loading: true, error: null, location: null });
+          const res = await fetchAddressFromPincode(val);
+          if (res.success) {
+            setPinLookup({ loading: false, error: null, location: `${res.city}, ${res.state}` });
+            setF((prev) => ({
+              ...prev,
+              pin: val,
+              city: res.city || prev.city,
+              state: res.state || prev.state,
+            }));
+            return;
+          } else if (res.valid === false) {
+            setPinLookup({ loading: false, error: res.error || 'Invalid PIN code. Location not found.', location: null });
+          } else {
+            setPinLookup({ loading: false, error: null, location: null });
+          }
+        }
+      } else {
+        setPinLookup({ loading: false, error: null, location: null });
+      }
+    }
     setF((x) => ({ ...x, [k]: val }));
   };
   const props = (k, extra = {}) => ({
@@ -432,6 +464,8 @@ function AddressForm({ initial, onSave, onCancel }) {
         </Field>
         <Field id="ad-pin" label="PIN code" required error={shown('pin')}>
           <input {...props('pin')} inputMode="numeric" autoComplete="postal-code" aria-required="true" />
+          {pinLookup.loading && <span className="pin-status loading">Looking up pincode…</span>}
+          {pinLookup.location && !shown('pin') && <span className="pin-status success">✓ {pinLookup.location}</span>}
         </Field>
       </div>
       {error && <span className="error" role="alert">{error}</span>}
@@ -448,16 +482,45 @@ function PrimaryAddressForm({ profile, onSave, onCancel }) {
   const [f, setF] = useState({ street: profile.street, city: profile.city, state: profile.state, pin: profile.pin });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [pinLookup, setPinLookup] = useState({ loading: false, error: null, location: null });
   const { errors, shown, blur, setSubmitted } = useFieldErrors(f, (v) => {
     const e = {};
     if (v.street.trim().length < 3) e.street = 'Enter the street address.';
     if (v.city.trim().length < 2) e.city = 'Enter the city.';
     if (v.state.trim().length < 2) e.state = 'Enter the state.';
     if (!isPin(v.pin)) e.pin = 'Enter a valid 6-digit PIN code.';
+    if (pinLookup.error) e.pin = pinLookup.error;
     return e;
   });
-  const set = (k) => (e) => {
-    const val = k === 'pin' ? e.target.value.replace(/\D/g, '').slice(0, 6) : e.target.value;
+  const set = (k) => async (e) => {
+    let val = e.target.value;
+    if (k === 'pin') {
+      val = val.replace(/\D/g, '').slice(0, 6);
+      if (val.length === 6) {
+        if (!isPin(val)) {
+          setPinLookup({ loading: false, error: 'Enter a valid 6-digit PIN code.', location: null });
+        } else {
+          setPinLookup({ loading: true, error: null, location: null });
+          const res = await fetchAddressFromPincode(val);
+          if (res.success) {
+            setPinLookup({ loading: false, error: null, location: `${res.city}, ${res.state}` });
+            setF((prev) => ({
+              ...prev,
+              pin: val,
+              city: res.city || prev.city,
+              state: res.state || prev.state,
+            }));
+            return;
+          } else if (res.valid === false) {
+            setPinLookup({ loading: false, error: res.error || 'Invalid PIN code. Location not found.', location: null });
+          } else {
+            setPinLookup({ loading: false, error: null, location: null });
+          }
+        }
+      } else {
+        setPinLookup({ loading: false, error: null, location: null });
+      }
+    }
     setF((x) => ({ ...x, [k]: val }));
   };
   const props = (k) => ({
@@ -501,6 +564,8 @@ function PrimaryAddressForm({ profile, onSave, onCancel }) {
         </Field>
         <Field id="pa-pin" label="PIN code" required error={shown('pin')}>
           <input {...props('pin')} inputMode="numeric" autoComplete="postal-code" />
+          {pinLookup.loading && <span className="pin-status loading">Looking up pincode…</span>}
+          {pinLookup.location && !shown('pin') && <span className="pin-status success">✓ {pinLookup.location}</span>}
         </Field>
       </div>
       {error && <span className="error" role="alert">{error}</span>}

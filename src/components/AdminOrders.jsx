@@ -1,15 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useProducts } from '../context/ProductsContext';
-import { deliveryInfo, formatINR, isAddressValid } from '../utils/pricing';
+import { useAuth } from '../context/AuthContext';
+import { deliveryInfo, formatINR, isAddressValid, isPin } from '../utils/pricing';
+import { fetchAddressFromPincode } from '../utils/pincode';
 import { ORDER_STATUSES, formatDate, shareOrderOnWhatsApp, statusLabel } from '../utils/orders';
 
 const EMPTY_CUSTOMER = { name: '', phone: '', street: '', city: '', state: '', pin: '' };
 
 export default function AdminOrders() {
   const { allProducts } = useProducts();
+  const { session } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loadError, setLoadError] = useState('');
+  const [mailNotice, setMailNotice] = useState('');   // result of the "order confirmed" email
 
   // Create-order form state.
   const [username, setUsername] = useState('');
@@ -24,6 +28,7 @@ export default function AdminOrders() {
   const [error, setError] = useState('');
   const [created, setCreated] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [pinLookup, setPinLookup] = useState({ loading: false, error: null, location: null });
 
   const load = useCallback(async () => {
     const { data, error: err } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
@@ -43,9 +48,41 @@ export default function AdminOrders() {
   const fee = feeOverride === '' ? autoFee : Number(feeOverride);
   const total = subtotal + (Number.isFinite(fee) ? fee : 0);
 
-  const setField = (k) => (e) => setCustomer((c) => ({ ...c, [k]: e.target.value }));
+  const setField = (k) => async (e) => {
+    let val = e.target.value;
+    if (k === 'phone') val = val.replace(/\D/g, '').slice(0, 10);
+    if (k === 'pin') {
+      val = val.replace(/\D/g, '').slice(0, 6);
+      if (val.length === 6) {
+        if (!isPin(val)) {
+          setPinLookup({ loading: false, error: 'Enter a valid 6-digit PIN code.', location: null });
+        } else {
+          setPinLookup({ loading: true, error: null, location: null });
+          const res = await fetchAddressFromPincode(val);
+          if (res.success) {
+            setPinLookup({ loading: false, error: null, location: `${res.city}, ${res.state}` });
+            setCustomer((prev) => ({
+              ...prev,
+              pin: val,
+              city: res.city || prev.city,
+              state: res.state || prev.state,
+            }));
+            return;
+          } else if (res.valid === false) {
+            setPinLookup({ loading: false, error: res.error || 'Invalid PIN code. Location not found.', location: null });
+          } else {
+            setPinLookup({ loading: false, error: null, location: null });
+          }
+        }
+      } else {
+        setPinLookup({ loading: false, error: null, location: null });
+      }
+    }
+    setCustomer((c) => ({ ...c, [k]: val }));
+  };
 
   const resetForm = () => {
+    setPinLookup({ loading: false, error: null, location: null });
     setUsername('');
     setMode(null);
     setUserId(null);
@@ -123,11 +160,31 @@ export default function AdminOrders() {
     resetForm();
   };
 
+  /** Emails the customer when an order moves from Placed to Confirmed. Never blocks the status change. */
+  const sendConfirmedEmail = async (order) => {
+    try {
+      const res = await fetch('/.netlify/functions/order-confirmed-email', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ code: order.code }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) return setMailNotice(`${order.code} is confirmed, but the confirmation email was not sent: ${body.error || 'unknown error'}.`);
+      if (body.sent) return setMailNotice(`${order.code} is confirmed. A confirmation email was sent to the customer.`);
+      if (body.reason === 'guest') return setMailNotice(`${order.code} is confirmed. This is a guest order, so there is no email address to write to. Send the WhatsApp message instead.`);
+      if (body.reason === 'no-email') return setMailNotice(`${order.code} is confirmed, but no email address was found for the customer.`);
+    } catch {
+      setMailNotice(`${order.code} is confirmed, but the confirmation email could not be sent. Check your connection and the email setup.`);
+    }
+  };
+
   const changeStatus = async (order, status) => {
+    setMailNotice('');
     const { data, error: err } = await supabase
       .from('orders').update({ status }).eq('id', order.id).select().single();
     if (err) return setLoadError(err.message);
     setOrders((list) => list.map((o) => (o.id === order.id ? data : o)));
+    if (order.status === 'placed' && status === 'confirmed') sendConfirmedEmail(data);
   };
 
   return (
@@ -178,6 +235,9 @@ export default function AdminOrders() {
             <label className="field">
               PIN code
               <input inputMode="numeric" maxLength={6} value={customer.pin} onChange={setField('pin')} />
+              {pinLookup.loading && <span className="pin-status loading">Looking up pincode…</span>}
+              {pinLookup.location && <span className="pin-status success">✓ {pinLookup.location}</span>}
+              {pinLookup.error && <span className="small error">{pinLookup.error}</span>}
             </label>
 
             <div className="field">
@@ -243,6 +303,7 @@ export default function AdminOrders() {
       <div className="panel">
         <h3 className="panel-title">Orders ({orders.length})</h3>
         {loadError && <p className="error panel-pad" role="alert">{loadError}</p>}
+        {mailNotice && <p className="admin-notice" role="status" style={{ margin: '0 1rem 0.5rem' }}>{mailNotice}</p>}
         {orders.length === 0 && !loadError && <p className="panel-pad muted">No orders yet.</p>}
         <ul className="plain">
           {orders.map((o) => (

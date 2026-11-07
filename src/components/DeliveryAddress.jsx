@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { isAddressValid, isPin } from '../utils/pricing';
+import { fetchAddressFromPincode } from '../utils/pincode';
 
 /**
  * Full delivery address form rendered on the main /bag page.
@@ -10,6 +11,8 @@ import { isAddressValid, isPin } from '../utils/pricing';
 export default function DeliveryAddress({ attempted = false }) {
   const { address, setAddress, pin } = useCart();
   const { profile, primaryAddress, addresses: extra } = useAuth();
+  const [pinLookup, setPinLookup] = useState({ loading: false, error: null, location: null });
+
   // The primary address comes from the profile. List it even when name or phone is still missing,
   // so it is never silently hidden; the form below then flags whatever is left to fill in.
   const hasPrimaryParts = profile && (profile.street || profile.city || profile.state || profile.pin);
@@ -28,6 +31,7 @@ export default function DeliveryAddress({ attempted = false }) {
   const pickSaved = (e) => {
     const a = addresses.find((x) => x.id === e.target.value);
     if (!a) return;
+    setPinLookup({ loading: false, error: null, location: null });
     setAddress({
       // Keep what is already typed for fields the saved address is missing.
       name: a.name || address.name || '',
@@ -37,10 +41,10 @@ export default function DeliveryAddress({ attempted = false }) {
   };
   const currentPin = address.pin || pin || '';
   const [editing, setEditing] = useState(false);
-  const complete = isAddressValid({ ...address, pin: currentPin });
+  const complete = isAddressValid({ ...address, pin: currentPin }) && !pinLookup.error;
   // Plain text when the address is complete; the form when it is being edited, is incomplete, or a checkout attempt failed.
   const showForm = editing || !complete;
-  const invalidPin = (currentPin.length === 6 && !isPin(currentPin)) || (attempted && !isPin(currentPin));
+  const invalidPin = (currentPin.length === 6 && (!isPin(currentPin) || Boolean(pinLookup.error))) || (attempted && (!isPin(currentPin) || Boolean(pinLookup.error)));
 
   const nameError = attempted && (!address.name || address.name.trim().length < 2);
   const phoneError = attempted && (!address.phone || !/^\d{10}$/.test(address.phone.trim()));
@@ -48,11 +52,42 @@ export default function DeliveryAddress({ attempted = false }) {
   const cityError = attempted && (!address.city || address.city.trim().length < 2);
   const stateError = attempted && (!address.state || address.state.trim().length < 2);
 
+  const lookupPin = useCallback(async (code) => {
+    if (code.length !== 6) {
+      setPinLookup({ loading: false, error: null, location: null });
+      return;
+    }
+    if (!isPin(code)) {
+      setPinLookup({ loading: false, error: 'Enter a valid 6-digit PIN code.', location: null });
+      return;
+    }
+    setPinLookup({ loading: true, error: null, location: null });
+    const res = await fetchAddressFromPincode(code);
+    if (res.success) {
+      setPinLookup({ loading: false, error: null, location: `${res.city}, ${res.state}` });
+      setAddress((prev) => ({
+        ...prev,
+        pin: code,
+        city: res.city || prev.city,
+        state: res.state || prev.state,
+      }));
+    } else if (res.valid === false) {
+      setPinLookup({ loading: false, error: res.error || 'Invalid PIN code. Location not found.', location: null });
+    } else {
+      setPinLookup({ loading: false, error: null, location: null });
+    }
+  }, [setAddress]);
+
   const handleChange = (field) => (e) => {
     const val = e.target.value;
     if (field === 'pin') {
       const cleanPin = val.replace(/\D/g, '').slice(0, 6);
       setAddress({ pin: cleanPin });
+      if (cleanPin.length === 6) {
+        lookupPin(cleanPin);
+      } else {
+        setPinLookup({ loading: false, error: null, location: null });
+      }
     } else if (field === 'phone') {
       const cleanPhone = val.replace(/\D/g, '').slice(0, 10);
       setAddress({ phone: cleanPhone });
@@ -207,7 +242,9 @@ export default function DeliveryAddress({ attempted = false }) {
                 aria-invalid={invalidPin}
                 required
               />
-              {invalidPin && <span className="small error">Enter 6-digit PIN</span>}
+              {pinLookup.loading && <span className="pin-status loading">Looking up pincode…</span>}
+              {pinLookup.location && !invalidPin && <span className="pin-status success">✓ {pinLookup.location}</span>}
+              {invalidPin && <span className="small error">{pinLookup.error || 'Enter a valid 6-digit PIN'}</span>}
             </div>
           </div>
           </>

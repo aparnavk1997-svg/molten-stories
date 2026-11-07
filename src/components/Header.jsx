@@ -24,12 +24,15 @@ export default function Header() {
           <NavLink to="/shop" onClick={close}>Shop</NavLink>
           <NavLink to="/about" onClick={close}>Our Story</NavLink>
           <NavLink to="/contact" onClick={close}>Contact</NavLink>
+          <NavLink to="/saved" className="nav-saved" onClick={close}>
+            Favourites{savedCount > 0 ? ` (${savedCount})` : ''}
+          </NavLink>
         </nav>
 
         <div className="header-actions">
           <NavLink
             to="/saved"
-            className="icon-link"
+            className="icon-link icon-saved"
             title="Favourites"
             aria-label={`Favourites, ${savedCount} ${savedCount === 1 ? 'candle' : 'candles'}`}
           >

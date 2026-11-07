@@ -177,59 +177,66 @@ export default function BagDrawer() {
                   </div>
                 </div>
               ))}
+              {/* Delivery and Gifting Options inside scrollable items area */}
+              <div className="drawer-extras">
+                <FreeDeliveryBar subtotal={subtotal} />
+                <DeliveryChecker pin={pin} onChange={setPin} subtotal={subtotal} />
+                {address?.name && (
+                  <p className="drawer-address-hint muted small" style={{ margin: '-0.4rem 0 0.4rem' }}>
+                    Deliver to: <strong>{address.name}</strong>{address.city ? ` · ${address.city}` : ''} ({pin || address.pin})
+                  </p>
+                )}
+                <GiftOptions />
+                <div className="drawer-summary-lines" style={{ marginTop: '0.4rem' }}>
+                  <div className="row">
+                    <span>Candles ({count})</span>
+                    <span>{formatINR(subtotal)}</span>
+                  </div>
+                  {hampers.length > 0 && (
+                    <div className="row">
+                      <span>Gift box packaging ({hampers.length})</span>
+                      <span>{formatINR(hamperPackagingFee)}</span>
+                    </div>
+                  )}
+                  {giftWrap && items.length > 0 && (
+                    <div className="row">
+                      <span>Gift wrap (candles)</span>
+                      <span>{formatINR(giftWrapFee)}</span>
+                    </div>
+                  )}
+                  {delivery && (
+                    <div className="row">
+                      <span>Delivery</span>
+                      <span>{delivery.free ? 'Free' : formatINR(delivery.fee)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
             </>
           )}
         </div>
 
         {!isEmpty && (
           <div className="drawer-foot">
-            <FreeDeliveryBar subtotal={subtotal} />
-            <DeliveryChecker pin={pin} onChange={setPin} subtotal={subtotal} />
-            {address?.name && (
-              <p className="drawer-address-hint muted small" style={{ margin: '-0.4rem 0 0.8rem' }}>
-                Deliver to: <strong>{address.name}</strong>{address.city ? ` · ${address.city}` : ''} ({pin || address.pin})
-              </p>
-            )}
-            <GiftOptions />
-            <div className="drawer-summary-lines" style={{ marginTop: '0.6rem' }}>
-              <div className="row">
-                <span>Candles ({count})</span>
-                <span>{formatINR(subtotal)}</span>
-              </div>
-              {hampers.length > 0 && (
-                <div className="row">
-                  <span>Gift box packaging ({hampers.length})</span>
-                  <span>{formatINR(hamperPackagingFee)}</span>
-                </div>
-              )}
-              {giftWrap && items.length > 0 && (
-                <div className="row">
-                  <span>Gift wrap (candles)</span>
-                  <span>{formatINR(giftWrapFee)}</span>
-                </div>
-              )}
-              {delivery && (
-                <div className="row">
-                  <span>Delivery</span>
-                  <span>{delivery.free ? 'Free' : formatINR(delivery.fee)}</span>
-                </div>
-              )}
-            </div>
             <div className="row total">
               <span>Total</span>
               <span>{formatINR(total)}</span>
             </div>
-            <p className="muted small">
-              {delivery || subtotal >= FREE_DELIVERY_MIN
-                ? 'Payment details will be confirmed on WhatsApp.'
-                : 'Enter your pincode to see the delivery charge. Payment details will be confirmed on WhatsApp.'}
-            </p>
+            <div className="drawer-foot-meta">
+              <span>{count} candle{count > 1 ? 's' : ''}{hampers.length > 0 ? ` · ${hampers.length} hamper${hampers.length > 1 ? 's' : ''}` : ''}</span>
+              <span>{delivery?.free ? 'Free delivery' : delivery ? `Delivery: ${formatINR(delivery.fee)}` : 'Delivery at checkout'}</span>
+            </div>
             <button className="btn btn-block" onClick={handlePlaceOrder}>
               {addressValid ? 'Place order on WhatsApp' : 'Add delivery address & order'}
             </button>
-            <Link to="/bag" className="btn btn-outline btn-block" onClick={closeDrawer}>View bag</Link>
-            <button className="link-btn drawer-continue" onClick={closeDrawer}>Continue shopping</button>
-            <button className="link-btn drawer-continue" onClick={() => setConfirmClear(true)}>Clear bag</button>
+            <div className="drawer-foot-actions">
+              <Link to="/bag" className="btn btn-outline btn-block btn-small" onClick={closeDrawer}>View bag</Link>
+              <div className="drawer-foot-sublinks">
+                <button type="button" className="link-btn drawer-continue" onClick={closeDrawer}>Continue shopping</button>
+                <span className="muted small" aria-hidden="true">·</span>
+                <button type="button" className="link-btn drawer-continue" onClick={() => setConfirmClear(true)}>Clear bag</button>
+              </div>
+            </div>
           </div>
         )}
         {confirmClear && (

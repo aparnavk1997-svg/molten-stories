@@ -76,13 +76,64 @@ export default function GiftBox() {
       return next > 0 ? { ...rest, [id]: next } : rest;
     });
 
+  const scrollToSummary = () => {
+    const el = document.getElementById('gift-box-summary');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const handleAddOrUpdate = () => {
+    if (!ready) return;
+    if (editingHamperId) {
+      updateHamper(editingHamperId, { items, note: note.trim() });
+    } else {
+      addHamper({ items, note: note.trim() });
+    }
+    setAdded(true);
+    setTimeout(() => setAdded(false), 2200);
+  };
+
   return (
-    <div className="container page">
+    <div className="container page has-floating-bar">
       <p className="eyebrow">Bespoke Hampers</p>
       <h1 className="h1-small">Build Your Gift Box</h1>
       <p className="lead">
         Choose 2 to 10 candles, add an optional personal note, and add the box to your bag.
       </p>
+
+      {/* Quick summary & progress banner right above the product selector */}
+      <div className="gift-top-banner">
+        <div className="gift-top-info">
+          <span className="gift-progress-pill">
+            🎁 {count} of {GIFT_MAX} candles
+          </span>
+          <div className="gift-progress-track" aria-hidden="true">
+            <div
+              className="gift-progress-fill"
+              style={{ width: `${Math.min(100, (count / GIFT_MAX) * 100)}%` }}
+            />
+          </div>
+          <span className="gift-top-total">
+            {count > 0 ? formatINR(total) : 'Box is empty'}
+          </span>
+          <span className="muted small">
+            {!ready
+              ? `(Add ${GIFT_MIN - count} more)`
+              : full
+              ? '(Box is full)'
+              : '(Ready to pack)'}
+          </span>
+        </div>
+        <button
+          type="button"
+          className="btn btn-outline btn-small"
+          onClick={scrollToSummary}
+          aria-label="View gift box summary"
+        >
+          {count > 0 ? `View Box (${count}) ↓` : 'View Box ↓'}
+        </button>
+      </div>
 
       <div className="cart-layout">
         <div>
@@ -140,7 +191,7 @@ export default function GiftBox() {
           )}
         </div>
 
-        <aside className="summary">
+        <aside id="gift-box-summary" className="summary">
           <GiftBoxVisual
             candles={flatCandles}
             maxSlots={GIFT_MAX}
@@ -148,7 +199,16 @@ export default function GiftBox() {
             onRemoveCandle={(id) => change(id, -1)}
           />
 
-          <h3 className="summary-title">Your gift box</h3>
+          <div className="summary-header-row">
+            <h3 className="summary-title" style={{ margin: 0 }}>Your gift box</h3>
+            <button
+              type="button"
+              className="link-btn small"
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            >
+              ↑ Back to candles
+            </button>
+          </div>
           <p className="muted small" aria-live="polite">
             {count} of {GIFT_MAX} candles
             {!ready && ` · add ${GIFT_MIN - count} more to continue`}
@@ -213,15 +273,7 @@ export default function GiftBox() {
               type="button"
               className="btn btn-block"
               disabled={!ready}
-              onClick={() => {
-                if (editingHamperId) {
-                  updateHamper(editingHamperId, { items, note: note.trim() });
-                } else {
-                  addHamper({ items, note: note.trim() });
-                }
-                setAdded(true);
-                setTimeout(() => setAdded(false), 2200);
-              }}
+              onClick={handleAddOrUpdate}
             >
               {added
                 ? (editingHamperId ? '✓ Updated in bag!' : '✓ Added to bag!')
@@ -229,6 +281,43 @@ export default function GiftBox() {
             </button>
           </div>
         </aside>
+      </div>
+
+      {/* Floating quick summary & action bar for mobile / small screens */}
+      <div className="gift-floating-bar" role="region" aria-label="Gift box quick bar">
+        <div className="gift-floating-info">
+          <div className="gift-floating-title">
+            <span>🎁 {count}/{GIFT_MAX} candles</span>
+            <span>·</span>
+            <span>{formatINR(total)}</span>
+          </div>
+          <span className="gift-floating-sub">
+            {!ready
+              ? `Add ${GIFT_MIN - count} more to pack`
+              : full
+              ? 'Box is full & ready'
+              : 'Ready to pack into gift box'}
+          </span>
+        </div>
+        <div className="gift-floating-actions">
+          <button
+            type="button"
+            className="btn btn-outline"
+            onClick={scrollToSummary}
+          >
+            View Box ↓
+          </button>
+          <button
+            type="button"
+            className="btn"
+            disabled={!ready}
+            onClick={handleAddOrUpdate}
+          >
+            {added
+              ? (editingHamperId ? '✓ Updated!' : '✓ Added!')
+              : (editingHamperId ? 'Update bag' : 'Add to bag')}
+          </button>
+        </div>
       </div>
     </div>
   );

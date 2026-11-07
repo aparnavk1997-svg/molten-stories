@@ -78,6 +78,16 @@ Setup (after the first migration):
 
 To add another admin, insert their user id into `public.admins`.
 
+## Order confirmation email
+
+When an admin changes an order's status from **Placed** to **Confirmed** in `/admin` → Orders, the customer gets a "your order is confirmed" email with their items, total, delivery address and tracking link. The admin sees a note under "Orders" saying whether it was sent.
+
+- Sent once per order, and only for Placed → Confirmed. Other changes (Shipped, Cancelled, flipping an order back and forth) send nothing.
+- Only orders placed by a signed-in customer have an email address. **Guest orders can't be emailed**; the admin note says so, and the WhatsApp button still works for them.
+- Sent from the [`order-confirmed-email`](netlify/functions/order-confirmed-email.mjs) Netlify function through the shop's Gmail account. It uses the same Netlify environment variables as the welcome email: `GMAIL_USER`, `GMAIL_APP_PASSWORD`, `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. Optional: `SITE_URL` (used in the tracking link; defaults to `https://moltenstories.netlify.app`) and `MAIL_FROM_NAME`.
+- Setup: run [`supabase/migrations/0009_order_customer_email.sql`](supabase/migrations/0009_order_customer_email.sql) in the SQL Editor. It adds an admin-only function that looks up a customer's email from their order.
+- The function is not served by `npm run dev`; it only runs on Netlify (or with `netlify dev`).
+
 ## Instagram feed
 
 The "Follow our little moments" strip on the home page can show your latest Instagram posts. It reads a public JSON feed from a feed service such as [Behold](https://behold.so), set in `VITE_INSTAGRAM_FEED_URL`. Without it, or if the feed can't be reached, the strip shows the static photos in [`InstagramStrip.jsx`](src/components/InstagramStrip.jsx).
