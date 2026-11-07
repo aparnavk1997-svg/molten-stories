@@ -1683,6 +1683,7 @@ select {
 }
 
 @media (min-width: 901px) {
+  .gift-top-view, .gift-back-btn { display: none; }
   .cart-layout .summary {
     position: sticky;
     top: calc(var(--header-h) + 12px);

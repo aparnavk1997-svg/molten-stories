@@ -98,10 +98,6 @@ export default function GiftBox() {
     <div className="container page has-floating-bar">
       <p className="eyebrow">Bespoke Hampers</p>
       <h1 className="h1-small">Build Your Gift Box</h1>
-      <p className="lead">
-        Choose 2 to 10 candles, add an optional personal note, and add the box to your bag.
-      </p>
-
       {/* Quick summary & progress banner right above the product selector */}
       <div className="gift-top-banner">
         <div className="gift-top-info">
@@ -127,7 +123,7 @@ export default function GiftBox() {
         </div>
         <button
           type="button"
-          className="btn btn-outline btn-small"
+          className="btn btn-outline btn-small gift-top-view"
           onClick={scrollToSummary}
           aria-label="View gift box summary"
         >
@@ -203,7 +199,7 @@ export default function GiftBox() {
             <h3 className="summary-title" style={{ margin: 0 }}>Your gift box</h3>
             <button
               type="button"
-              className="link-btn small"
+              className="link-btn small gift-back-btn"
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             >
               ↑ Back to candles
@@ -288,8 +284,6 @@ export default function GiftBox() {
         <div className="gift-floating-info">
           <div className="gift-floating-title">
             <span>🎁 {count}/{GIFT_MAX} candles</span>
-            <span>·</span>
-            <span>{formatINR(total)}</span>
           </div>
           <span className="gift-floating-sub">
             {!ready
