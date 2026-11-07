@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import { paymentConfigured } from '../utils/payment';
 import { supabase, supabaseEnabled } from '../lib/supabase';
 import { formatINR } from '../utils/pricing';
 import { ORDER_STATUSES, formatDateTime, statusLabel } from '../utils/orders';
@@ -127,6 +128,9 @@ export default function Track() {
             {order.items.map((i, n) => <li key={n}>{i.name} × {i.qty}</li>)}
           </ul>
           <p><strong>Total: {formatINR(order.total)}</strong></p>
+          {order.status === 'confirmed' && paymentConfigured && (
+            <Link className="btn" to={`/pay?code=${order.code}`}>Pay {formatINR(order.total)} now</Link>
+          )}
         </div>
       )}
     </div>

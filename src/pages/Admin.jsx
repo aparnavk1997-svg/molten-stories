@@ -84,7 +84,13 @@ export default function Admin() {
   const [notice, setNotice] = useState('');
   // Photos waiting to be fitted to the frame: { src, replaceIndex } (replaceIndex null = add as new).
   const [fitQueue, setFitQueue] = useState([]);
-  const [tab, setTab] = useState('products');
+  const [tab, setTab] = useState(() => (['orders', 'reviews'].includes(searchParams.get('tab')) ? searchParams.get('tab') : 'products'));
+
+  // Arriving from the header bell (/admin?tab=orders), including when already on this page.
+  const tabParam = searchParams.get('tab');
+  useEffect(() => {
+    if (tabParam === 'orders' || tabParam === 'reviews') setTab(tabParam);
+  }, [tabParam]);
 
   // Arriving from a product image's edit button (/admin?edit=ID): open that product in the form.
   const editParam = searchParams.get('edit');
